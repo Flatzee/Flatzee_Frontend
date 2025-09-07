@@ -1,0 +1,28 @@
+:root{
+  --topstrip-h: 56px;        /* mobile logo/icons row */
+  --searchbar-h: 56px;       /* mobile search row */
+  --desktop-topbar-h: 64px;  /* desktop single bar */
+  --bottom-safe: env(safe-area-inset-bottom, 0px);
+  --bottombar-h: 56px;       /* mobile bottom nav */
+  --top-pad: calc(var(--topstrip-h) + var(--searchbar-h));
+}
+@media (min-width:768px){
+  :root{
+    --topstrip-h: 0px;
+    --searchbar-h: 0px;
+    --top-pad: var(--desktop-topbar-h);
+    --bottombar-h: 0px;
+  }
+}
+
+/* collapsed = hide top strip; only mobile uses it */
+:root[data-top-collapsed="1"]{
+  --topstrip-h: 0px;                /* collapses the first row */
+  --top-pad: var(--searchbar-h);    /* only search row contributes to padding */
+}
+
+/* Smooth transform for the top strip */
+.topstrip-transition{
+  transition: transform 180ms ease, opacity 180ms ease;
+  will-change: transform, opacity;
+}
