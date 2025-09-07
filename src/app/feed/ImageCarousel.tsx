@@ -71,7 +71,6 @@ export default function ImageCarousel({
     markInteracted();
     to(index - 1);
   };
-
   const next = () => {
     markInteracted();
     if (index >= images.length - 1) {
@@ -81,13 +80,22 @@ export default function ImageCarousel({
     to(index + 1);
   };
 
+  // ✅ compute hooks BEFORE any early returns
+  const cursorStyle = React.useMemo(
+    () => ({
+      left: { cursor: "w-resize" as const },
+      mid: { cursor: "default" as const },
+      right: { cursor: "e-resize" as const },
+    }),
+    []
+  );
+
   if (images.length === 0) return null;
-  const current = images[index];
 
   return (
     <div
       ref={rootRef}
-      className={`relative h-full w-full outline-none ${className ?? ""}`}
+      className={`relative h-full w-full outline-none ${className || ""}`}
       tabIndex={0}
       aria-roledescription="carousel"
       aria-label="Listing images"
@@ -115,7 +123,6 @@ export default function ImageCarousel({
       >
         {images.map((src, i) => (
           <div key={i} className="relative h-full w-full shrink-0 snap-start" style={{ inlineSize: "100%" }}>
-            {/* Replaces <img> with next/image */}
             <Image
               src={src}
               alt=""
@@ -131,17 +138,9 @@ export default function ImageCarousel({
 
       {/* click zones */}
       <div className="absolute inset-0 z-10 flex">
-        <button
-          aria-label="Previous image"
-          onClick={prev}
-          className="h-full w-[35%] bg-transparent cursor-[w-resize]"
-        />
-        <div aria-hidden className="h-full w-[30%] cursor-default" />
-        <button
-          aria-label="Next image"
-          onClick={next}
-          className="h-full w-[35%] bg-transparent cursor-[e-resize]"
-        />
+        <button aria-label="Previous image" onClick={prev} className="h-full w-[35%] bg-transparent" style={cursorStyle.left} />
+        <div aria-hidden className="h-full w-[30%]" style={cursorStyle.mid} />
+        <button aria-label="Next image" onClick={next} className="h-full w-[35%] bg-transparent" style={cursorStyle.right} />
       </div>
 
       <style>{`

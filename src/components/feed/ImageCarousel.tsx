@@ -71,7 +71,6 @@ export default function ImageCarousel({
     markInteracted();
     to(index - 1);
   };
-
   const next = () => {
     markInteracted();
     if (index >= images.length - 1) {
@@ -81,7 +80,7 @@ export default function ImageCarousel({
     to(index + 1);
   };
 
-  if (images.length === 0) return null;
+  // ✅ compute hooks BEFORE any early returns
   const cursorStyle = React.useMemo(
     () => ({
       left: { cursor: "w-resize" as const },
@@ -90,6 +89,8 @@ export default function ImageCarousel({
     }),
     []
   );
+
+  if (images.length === 0) return null;
 
   return (
     <div
@@ -122,7 +123,14 @@ export default function ImageCarousel({
       >
         {images.map((src, i) => (
           <div key={i} className="relative h-full w-full shrink-0 snap-start" style={{ inlineSize: "100%" }}>
-            <Image src={src} alt="" fill sizes="100vw" className="object-cover" priority={i === 0} />
+            <Image
+              src={src}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority={i === 0}
+            />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
         ))}
