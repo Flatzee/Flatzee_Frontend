@@ -1,16 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import * as React from "react";
+import Image from "next/image";
 
-type Props = { images: string[]; className?: string };
+type Props = {
+  images: string[];
+  className?: string;
+  onOverswipeRightAtEnd?: () => void;
+  disableOverswipe?: boolean;
+  onFirstInteraction?: () => void;
+};
 
-export default function ImageCarousel({ images, className }: Props) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
+export default function ImageCarousel({
+  images,
+  className,
+  onOverswipeRightAtEnd,
+  disableOverswipe,
+  onFirstInteraction,
+}: Props) {
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [index, setIndex] = React.useState(0);
+  const [animKey, setAnimKey] = React.useState(0);
+  const interactedRef = React.useRef(false);
 
-  // update active dot on scroll
-  useEffect(() => {
+  React.useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
     const onScroll = () => {
@@ -21,6 +35,23 @@ export default function ImageCarousel({ images, className }: Props) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
+  // keyboard navigation
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    const root = rootRef.current;
+    if (!root) return;
+    root.addEventListener("keydown", onKey);
+    return () => root.removeEventListener("keydown", onKey);
+  });
+
+  React.useEffect(() => {
+    // reset progress animation on image change
+    setAnimKey((k) => k + 1);
+  }, [index]);
+
   const to = (i: number) => {
     const el = trackRef.current;
     if (!el) return;
@@ -29,65 +60,99 @@ export default function ImageCarousel({ images, className }: Props) {
     setIndex(clamped);
   };
 
+  const markInteracted = () => {
+    if (!interactedRef.current) {
+      interactedRef.current = true;
+      onFirstInteraction?.();
+    }
+  };
+
+  const prev = () => {
+    markInteracted();
+    to(index - 1);
+  };
+
+  const next = () => {
+    markInteracted();
+    if (index >= images.length - 1) {
+      if (!disableOverswipe) onOverswipeRightAtEnd?.();
+      return;
+    }
+    to(index + 1);
+  };
+
+  if (images.length === 0) return null;
+  const current = images[index];
+
   return (
-    <div className={`relative h-full w-full ${className || ""}`}>
+    <div
+      ref={rootRef}
+      className={`relative h-full w-full outline-none ${className ?? ""}`}
+      tabIndex={0}
+      aria-roledescription="carousel"
+      aria-label="Listing images"
+    >
+      {/* top progress segments */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex gap-1 p-2">
+        {images.map((_, i) => (
+          <div key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-white/40">
+            <div
+              key={`${animKey}-${i}-${index === i}`}
+              className={`h-full ${index === i ? "bg-white" : "bg-white/60 w-0"}`}
+              style={
+                index === i
+                  ? { width: "100%", transition: prefersReducedMotion() ? undefined : "width 3s linear" }
+                  : undefined
+              }
+            />
+          </div>
+        ))}
+      </div>
+
       <div
         ref={trackRef}
         className="carousel-track flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth touch-pan-y"
-        style={{
-          scrollbarWidth: "none" as any,
-          msOverflowStyle: "none",
-        }}
       >
         {images.map((src, i) => (
-          <div
-            key={i}
-            className="relative h-full w-full shrink-0 snap-start"
-            style={{ inlineSize: "100%" }}
-          >
-            <img
+          <div key={i} className="relative h-full w-full shrink-0 snap-start" style={{ inlineSize: "100%" }}>
+            {/* Replaces <img> with next/image */}
+            <Image
               src={src}
               alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority={i === 0}
             />
-            {/* gradient for readability */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
         ))}
       </div>
 
-      {/* arrows */}
-      <button
-        aria-label="Previous image"
-        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 backdrop-blur transition hover:bg-white"
-        onClick={() => to(index - 1)}
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button
-        aria-label="Next image"
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 backdrop-blur transition hover:bg-white"
-        onClick={() => to(index + 1)}
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-
-      {/* dots */}
-      <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
-        {images.map((_, i) => (
-          <span
-            key={i}
-            className={`h-2 w-2 rounded-full ${i === index ? "bg-white" : "bg-white/40"}`}
-          />
-        ))}
+      {/* click zones */}
+      <div className="absolute inset-0 z-10 flex">
+        <button
+          aria-label="Previous image"
+          onClick={prev}
+          className="h-full w-[35%] bg-transparent cursor-[w-resize]"
+        />
+        <div aria-hidden className="h-full w-[30%] cursor-default" />
+        <button
+          aria-label="Next image"
+          onClick={next}
+          className="h-full w-[35%] bg-transparent cursor-[e-resize]"
+        />
       </div>
 
       <style>{`
-        .carousel-track::-webkit-scrollbar {
-          display: none;
-        }
+        .carousel-track::-webkit-scrollbar { display: none; }
+        .carousel-track { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
     </div>
   );
+}
+
+function prefersReducedMotion() {
+  if (typeof window === "undefined") return false;
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
