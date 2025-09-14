@@ -6,6 +6,10 @@ import type { Listing } from "@/data/listings";
 import ImageCarousel from "@/components/feed/ImageCarousel";
 import { ImageNavTip, ScrollHint } from "@/components/ux/CoachMarks";
 import { useRouter } from "next/navigation";
+// import type { Listing } from "@/data/listings";
+
+// Add this:
+type ListingOptional = { area?: string; short?: string; verified?: boolean };
 
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [slideOut, setSlideOut] = useState(false);
@@ -96,24 +100,30 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
 
         <div className="text-2xl font-semibold drop-shadow">{listing.title}</div>
-        <div className="text-sm text-white/90">
-          {listing.city}
-          {"area" in listing && (listing as any).area ? ` • ${(listing as any).area}` : ""} • NPR{" "}
-          {listing.pricePerNight.toLocaleString()}/night
-        </div>
+            <div className="text-sm text-white/90">
+              {listing.city}
+              {((listing as Listing & ListingOptional).area
+                ? ` • ${(listing as Listing & ListingOptional).area}`
+                : "")}{" "}
+              • NPR {listing.pricePerNight.toLocaleString()}/night
+            </div>
 
-        {listing.short && <div className="mt-2 max-w-xl text-sm text-white/90">{listing.short}</div>}
+            {(listing as Listing & ListingOptional).short && (
+              <div className="mt-2 max-w-xl text-sm text-white/90">
+                {(listing as Listing & ListingOptional).short}
+              </div>
+            )}
+
+        {/* direct open listing page button (offset above bottom bar) */}
+        <button
+          aria-label="Open listing page"
+          onClick={openListing}
+          className="absolute right-6 z-10 rounded-full bg-white/90 px-4 py-2 text-sm font-medium shadow-md hover:bg-white focus:outline-none focus-visible:ring
+                     bottom-[calc(var(--bottombar-h)+16px)]"
+        >
+          View listing <ArrowUpRight className="ml-1 inline h-4 w-4 align-text-bottom" />
+        </button>
       </div>
-
-      {/* direct open listing page button (offset above bottom bar) */}
-      <button
-        aria-label="Open listing page"
-        onClick={openListing}
-        className="absolute right-6 z-10 rounded-full bg-white/90 px-4 py-2 text-sm font-medium shadow-md hover:bg-white focus:outline-none focus-visible:ring
-                   bottom-[calc(var(--bottombar-h)+16px)]"
-      >
-        View listing <ArrowUpRight className="ml-1 inline h-4 w-4 align-text-bottom" />
-      </button>
     </section>
   );
 }
