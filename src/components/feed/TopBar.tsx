@@ -1,18 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Crosshair,
-  Heart,
-  MapPin,
-  Menu,
-  Search,
-  UserCircle,
-} from "lucide-react";
+import { Crosshair, Heart, MapPin, Menu, Search, UserCircle } from "lucide-react";
 import MobileDrawer from "@/components/nav/MobileDrawer";
-import DateRangePicker, {
-  type DateRange,
-} from "@/components/search/DateRangePicker";
+import DateRangePicker, { type DateRange } from "@/components/search/DateRangePicker";
 import GuestPicker from "@/components/search/GuestPicker";
 import { nearestCity } from "@/lib/geo";
 
@@ -24,7 +15,6 @@ export type SearchState = {
 };
 
 type Props = {
-  /** Called when user completes Destination → Dates → Guests and taps Search */
   onApplySearch?: (v: SearchState) => void;
 };
 
@@ -41,20 +31,17 @@ export default function TopBar({ onApplySearch }: Props) {
   // ui state
   const [showSuggest, setShowSuggest] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mobileCollapsed, setMobileCollapsed] = useState(false);
 
+  // first-time snackbar hint
+  const [showHint, setShowHint] = useState(false);
+
+  // single compact mobile bar ref (always compact to avoid flicker)
+  const barRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLButtonElement>(null);
-  const SUGGESTIONS = [
-    "Kathmandu",
-    "Bhaktapur",
-    "Lalitpur",
-    "Pokhara",
-    "Butwal",
-    "Biratnagar",
-    "Dharan",
-  ];
 
-  // prefill destination from sessionStorage
+  const SUGGESTIONS = ["Kathmandu", "Bhaktapur", "Lalitpur", "Pokhara", "Butwal", "Biratnagar", "Dharan"];
+
+  // preload destination from sessionStorage
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("fz.dest");
@@ -62,68 +49,74 @@ export default function TopBar({ onApplySearch }: Props) {
     } catch {}
   }, []);
 
+  // first-time snackbar (mobile only)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) return;
+    const seen = sessionStorage.getItem("fz.searchHint") === "1";
+    if (!seen) {
+      setShowHint(true);
+      const t = window.setTimeout(() => dismissHint(), 10000);
+      return () => window.clearTimeout(t);
+    }
+  }, []);
+  const dismissHint = () => {
+    try {
+      sessionStorage.setItem("fz.searchHint", "1");
+    } catch {}
+    setShowHint(false);
+  };
+
+  // keep CSS vars in sync with the compact bar height
+  const writeBarHeights = useCallback(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--topstrip-h", "0px"); // no extra strip
+    const barH = Math.round(barRef.current?.getBoundingClientRect().height || 48);
+    root.style.setProperty("--searchbar-h", `${barH}px`);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    writeBarHeights();
+    const ro = new ResizeObserver(writeBarHeights);
+    barRef.current && ro.observe(barRef.current);
+    window.addEventListener("resize", writeBarHeights, { passive: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", writeBarHeights);
+    };
+  }, [writeBarHeights]);
+
+  // summary line (shown inside compact pill)
   const summary = useMemo(() => {
     const dateText =
       range.start && range.end
         ? `${range.start.toLocaleDateString()} → ${range.end.toLocaleDateString()}`
         : "Dates";
-    const guestText = guests
-      ? `${guests} guest${guests === 1 ? "" : "s"}`
-      : "Guests";
-    return `${destination || "Destination"} | ${dateText} | ${guestText}`;
+    const guestText = guests ? `${guests} guest${guests === 1 ? "" : "s"}` : "Guests";
+    return `${destination || "Destination"} • ${dateText} • ${guestText}`;
   }, [destination, range.start, range.end, guests]);
-
-  const closeAll = useCallback(() => setOpen(false), []);
 
   // ESC to close modal
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeAll();
-    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, [closeAll]);
-
-  // collapse mobile top strip on scroll (listen to feed scroller)
-  useEffect(() => {
-    const el = document.getElementById("feed-scroll");
-    if (!el) return;
-
-    let ticking = false;
-    const onScroll = () => {
-      if (window.innerWidth >= 768) return; // mobile only
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = (el as HTMLElement).scrollTop;
-        const collapsed = y > 16;
-        setMobileCollapsed(collapsed);
-        document.documentElement.setAttribute(
-          "data-top-collapsed",
-          collapsed ? "1" : "0"
-        );
-        ticking = false;
-      });
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   const applySearch = () => {
     try {
       sessionStorage.setItem("fz.dest", destination || "");
+      sessionStorage.setItem("fz.searchHint", "1"); // once used, never show hint again
     } catch {}
 
-    const payload: SearchState = {
+    onApplySearch?.({
       destination: destination || undefined,
       checkIn: range.start,
       checkOut: range.end,
       guests,
-    };
+    });
 
-    onApplySearch?.(payload);
-    closeAll();
+    setOpen(false);
     pillRef.current?.focus();
   };
 
@@ -135,10 +128,10 @@ export default function TopBar({ onApplySearch }: Props) {
   };
 
   return (
-    <div className="fixed inset-x-0 top-0 z-40">
-      {/* DESKTOP TOP BAR */}
+    <div className="relative">
+      {/* DESKTOP BAR (unchanged) */}
       <div className="hidden md:flex mx-auto h-[var(--desktop-topbar-h)] max-w-7xl items-center justify-between gap-3 border-b bg-white/70 px-4 backdrop-blur-md">
-        {/* Left: burger */}
+        {/* Left */}
         <button
           aria-label="Open menu"
           aria-expanded={drawerOpen}
@@ -148,7 +141,7 @@ export default function TopBar({ onApplySearch }: Props) {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Center: search pill with current values (kept as before) */}
+        {/* Center */}
         <button
           ref={pillRef}
           aria-label="Open search: destination, dates, guests"
@@ -159,63 +152,104 @@ export default function TopBar({ onApplySearch }: Props) {
           className="group mx-auto flex min-w-[260px] max-w-xl flex-1 items-center justify-between gap-3 rounded-full border bg-white px-4 py-2 text-left text-sm text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
         >
           <div className="flex flex-1 items-center justify-between gap-3">
-            <span className="truncate">
-              {destination || "Destination"}
-            </span>
+            <span className="truncate">{destination || "Destination"}</span>
             <span className="text-neutral-300">|</span>
-            <span className="truncate">
-              {range.start ? range.start.toLocaleDateString() : "Check-in"}
-            </span>
+            <span className="truncate">{range.start ? range.start.toLocaleDateString() : "Check-in"}</span>
             <span className="text-neutral-300">→</span>
-            <span className="truncate">
-              {range.end ? range.end.toLocaleDateString() : "Check-out"}
-            </span>
+            <span className="truncate">{range.end ? range.end.toLocaleDateString() : "Check-out"}</span>
             <span className="text-neutral-300">|</span>
-            <span className="truncate">
-              {guests ? `${guests} guest${guests === 1 ? "" : "s"}` : "Guests"}
-            </span>
+            <span className="truncate">{guests ? `${guests} guest${guests === 1 ? "" : "s"}` : "Guests"}</span>
           </div>
           <Search className="h-4 w-4 text-neutral-500" />
         </button>
 
-        {/* Right: actions */}
+        {/* Right */}
         <div className="flex items-center gap-2">
-          <button
-            aria-label="Wishlists"
-            className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-          >
+          <button aria-label="Wishlists" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
             <Heart className="h-5 w-5" />
           </button>
-          <button
-            aria-label="Profile"
-            className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-          >
+          <button aria-label="Profile" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
             <UserCircle className="h-6 w-6" />
           </button>
         </div>
       </div>
 
-      {/* SEARCH MODAL (same functionality as before) */}
+      {/* MOBILE: single compact sticky bar (no grow/shrink flicker) */}
+      <div className="md:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+        <div
+          ref={barRef}
+          className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-3"
+        >
+          {/* Left: burger */}
+          <button
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+            className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+
+          {/* Center: compact pill */}
+          <button
+            ref={pillRef}
+            aria-label="Open search"
+            onClick={() => {
+              setOpen(true);
+              setStep("dest");
+            }}
+            className="flex flex-1 items-center justify-between overflow-hidden rounded-full border bg-white px-3 py-2 text-left text-xs text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
+          >
+            <div className="truncate">{summary}</div>
+            <Search className="h-3.5 w-3.5 text-neutral-500" />
+          </button>
+
+          {/* Right: actions */}
+          <button aria-label="Wishlists" className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
+            <Heart className="h-4 w-4" />
+          </button>
+          <button aria-label="Profile" className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
+            <UserCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Snackbar hint (sits below the bar; auto-hides) */}
+        {showHint && (
+          <div
+            role="status"
+            className="fixed left-0 right-0 z-40"
+            style={{ top: "calc(var(--searchbar-h) + 8px)" }}
+          >
+            <div className="mx-auto max-w-7xl px-3">
+              <div className="mx-auto w-full rounded-lg bg-neutral-900/95 px-3 py-2 text-xs text-white shadow-lg backdrop-blur supports-[backdrop-filter]:bg-neutral-900/85 flex items-center justify-between">
+                <span>Tip: search a destination, dates, and guests for better matches.</span>
+                <button
+                  onClick={dismissHint}
+                  className="ml-3 rounded px-2 py-1 text-[11px] font-medium bg-white/10 hover:bg-white/20 focus:outline-none focus-visible:ring"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* SEARCH MODAL */}
       {open && (
         <div
           className="fixed inset-0 z-[60] grid place-items-start bg-black/20 p-3 pt-[calc(var(--desktop-topbar-h))]"
           role="dialog"
           aria-label="Search panel"
-          onClick={closeAll}
+          onClick={() => setOpen(false)}
         >
-          <div
-            className="mx-auto w-full max-w-2xl rounded-2xl border bg-white p-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="mx-auto w-full max-w-2xl rounded-2xl border bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 text-xs text-neutral-500">{summary}</div>
 
             {/* Step: Destination */}
             {step === "dest" && (
               <div className="mb-3">
-                <label
-                  className="mb-1 block text-xs font-medium text-neutral-600"
-                  htmlFor="dest"
-                >
+                <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="dest">
                   Destination
                 </label>
                 <div className="relative">
@@ -253,10 +287,7 @@ export default function TopBar({ onApplySearch }: Props) {
                           }
                           navigator.geolocation.getCurrentPosition(
                             (pos) => {
-                              const city = nearestCity(
-                                pos.coords.latitude,
-                                pos.coords.longitude
-                              );
+                              const city = nearestCity(pos.coords.latitude, pos.coords.longitude);
                               commitDestination(city);
                             },
                             () => {
@@ -269,11 +300,7 @@ export default function TopBar({ onApplySearch }: Props) {
                         <Crosshair className="h-4 w-4" /> Use current location
                       </button>
                       <div className="my-1 h-px bg-neutral-100" />
-                      {SUGGESTIONS.filter((c) =>
-                        c
-                          .toLowerCase()
-                          .includes(destination.toLowerCase())
-                      ).map((c) => (
+                      {SUGGESTIONS.filter((c) => c.toLowerCase().includes(destination.toLowerCase())).map((c) => (
                         <button
                           key={c}
                           type="button"
@@ -294,9 +321,7 @@ export default function TopBar({ onApplySearch }: Props) {
             {/* Step: Dates */}
             {step === "dates" && (
               <div className="mb-3">
-                <label className="mb-1 block text-xs font-medium text-neutral-600">
-                  Select dates
-                </label>
+                <label className="mb-1 block text-xs font-medium text-neutral-600">Select dates</label>
                 <DateRangePicker
                   value={range}
                   onChange={setRange}
@@ -311,9 +336,7 @@ export default function TopBar({ onApplySearch }: Props) {
             {/* Step: Guests */}
             {step === "guests" && (
               <div className="mb-1">
-                <label className="mb-2 block text-xs font-medium text-neutral-600">
-                  Guests
-                </label>
+                <label className="mb-2 block text-xs font-medium text-neutral-600">Guests</label>
                 <GuestPicker
                   onComplete={(total) => {
                     setGuests(total);
@@ -327,7 +350,7 @@ export default function TopBar({ onApplySearch }: Props) {
               <button
                 type="button"
                 aria-label="Close search"
-                onClick={closeAll}
+                onClick={() => setOpen(false)}
                 className="rounded-lg px-3 py-2 text-sm hover:bg-neutral-100 focus:outline-none focus-visible:ring"
               >
                 Cancel
@@ -346,81 +369,6 @@ export default function TopBar({ onApplySearch }: Props) {
         </div>
       )}
 
-      {/* MOBILE: dual bars */}
-      <div className="md:hidden">
-        {/* Bar A: top strip (logo + icons + burger) */}
-        <div
-          className={`fixed inset-x-0 top-0 z-40 flex h-[56px] items-center justify-between border-b bg-white/80 px-4 backdrop-blur topstrip-transition ${
-            mobileCollapsed
-              ? "-translate-y-full opacity-0"
-              : "translate-y-0 opacity-100"
-          }`}
-        >
-          <div
-            className="grid h-8 w-8 place-items-center rounded-full bg-neutral-900 text-xs font-bold text-white"
-            aria-label="Flatzee logo"
-          >
-            FZ
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Wishlists"
-              className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-            >
-              <Heart className="h-5 w-5" />
-            </button>
-            <button
-              aria-label="Profile"
-              className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-            >
-              <UserCircle className="h-6 w-6" />
-            </button>
-            <button
-              aria-label="Open menu"
-              aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(true)}
-              className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Bar B: search row (sticky) */}
-        <div className="sticky top-0 z-40 bg-white/90 backdrop-blur">
-          <div className="mx-auto grid h-[var(--searchbar-h)] max-w-7xl place-items-center border-b px-4">
-            <button
-              aria-label="Open search"
-              onClick={() => {
-                setOpen(true);
-                setStep("dest");
-              }}
-              className="w-full rounded-full border bg-white px-4 py-3 text-left text-sm text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="truncate">
-                  {destination || "Destination"}
-                </span>
-                <span className="text-neutral-400">•</span>
-                <span className="truncate">
-                  {range.start && range.end
-                    ? `${range.start.toLocaleDateString()} → ${range.end.toLocaleDateString()}`
-                    : "Dates"}
-                </span>
-                <span className="text-neutral-400">•</span>
-                <span className="truncate">
-                  {guests
-                    ? `${guests} guest${guests === 1 ? "" : "s"}`
-                    : "Guests"}
-                </span>
-                <Search className="h-4 w-4 text-neutral-500" />
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Shared mobile/desktop drawer */}
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   );
