@@ -10,7 +10,7 @@ export type Listing = {
   images: string[]
   hostName: string
   hostYears: number
-  badges?: ("premium" | "popular" | "verified")[]
+  badges?: ("premium" | "popular" | "verified" | "sponsored" | "featured" | "forYou")[];
   short?: string
   maxGuests?: number
   availability?: { start: string; end: string }[]
