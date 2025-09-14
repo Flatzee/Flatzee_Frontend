@@ -111,6 +111,19 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+:root {
+  /* Defaults; JS will overwrite with measured values on mobile */
+  --topstrip-h: 64px;       /* h-16 */
+  --searchbar-h: 40px;      /* h-10 */
+  --bottombar-h: 56px;      /* h-14 */
+  --top-safe: env(safe-area-inset-top, 0px);
+  --bottom-safe: env(safe-area-inset-bottom, 0px);
+}
+
+.topstrip-transition {
+  transition: transform 180ms ease, opacity 120ms linear;
+}
+
 
 @layer base {
   * {

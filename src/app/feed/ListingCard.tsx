@@ -9,8 +9,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="relative h-[calc(100vh-6rem)] min-h-[540px] w-full snap-start overflow-hidden rounded-2xl border md:h-[calc(100vh-7rem)]">
-      {/* Images */}
+<section
+  className="
+    relative
+    h-[calc(100dvh-var(--topstrip-h)-var(--searchbar-h)-var(--bottombar-h)-var(--bottom-safe))]
+    min-h-[420px]
+    w-full snap-start overflow-hidden rounded-2xl border
+    md:h-auto
+  "
+>      {/* Images */}
       <ImageCarousel images={listing.images} />
 
       {/* bottom content */}

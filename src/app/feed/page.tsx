@@ -67,7 +67,13 @@ export default function FeedPage() {
 
       <main
         id="feed-scroll"
-        className="h-screen overflow-y-auto bg-neutral-50 pt-[calc(var(--topstrip-h)+var(--searchbar-h))] md:pb-0 pb-[calc(var(--bottombar-h)+var(--bottom-safe))] snap-y snap-mandatory scroll-smooth"
+        className="
+          h-screen overflow-y-auto bg-neutral-50
+          pt-[calc(var(--topstrip-h)+var(--searchbar-h)+var(--top-safe))]
+          md:pb-0
+          pb-[calc(var(--bottombar-h)+var(--bottom-safe))]
+          snap-y snap-mandatory scroll-smooth
+        "
       >
         <div className="mx-auto grid max-w-7xl gap-6 px-3 md:px-6">
           {nudged && (
