@@ -5,7 +5,10 @@ import TopBar, { type SearchState } from "@/components/feed/TopBar";
 import BottomBar from "@/components/feed/BottomBar";
 import ListingCard from "@/components/feed/ListingCard";
 import EndOfFeed from "@/components/feed/EndOfFeed";
-import { LISTINGS } from "@/data/listings";
+
+// NEW: import the hook you created
+import { useInfiniteListings } from "@/components/feed/UseInfiniteListings";
+// If your export was default, use: `import useInfiniteListings from "@/components/feed/UseInfiniteListings";`
 
 type Search = { destination?: string; checkIn?: Date; checkOut?: Date; guests?: number };
 
@@ -33,27 +36,31 @@ export default function FeedPage() {
     setShowTips(false);
   };
 
+  // NEW: use infinite listings (repeats your seed set in chunks)
+  const { data, sentinelRef } = useInfiniteListings(); // you can pass a custom batch size if needed
+
+  // Filter over the currently loaded infinite data
   const { items, soft } = useMemo(() => {
-    const all = [...LISTINGS];
+    const all = data;
     const dest = (search.destination || "").trim().toLowerCase();
-    if (!dest) {
-      return { items: all, soft: false };
-    }
+    if (!dest) return { items: all, soft: false };
+
     let maxScore = 0;
     const scored = all
       .map((l) => {
-        const city = l.city.toLowerCase();
+        const city = (l.city || "").toLowerCase();
         const starts = city.startsWith(dest);
         const includes = !starts && city.includes(dest);
-        const score = (starts ? 100 : includes ? 60 : 0) + (l.verified ? 10 : 0) + l.rating;
+        const score = (starts ? 100 : includes ? 60 : 0) + (l.verified ? 10 : 0) + (l.rating || 0);
         if (score > maxScore) maxScore = score;
         return { l, score };
       })
       .sort((a, b) => b.score - a.score)
       .map((x) => x.l);
+
     const soft = maxScore < 100; // no strong startsWith match
     return { items: scored, soft };
-  }, [search]);
+  }, [data, search]);
 
   const onApplySearch = (v: SearchState) => {
     try {
@@ -121,6 +128,9 @@ export default function FeedPage() {
           {items.map((l) => (
             <ListingCard key={l.id} listing={l} />
           ))}
+
+          {/* Sentinel triggers the next batch */}
+          <div ref={sentinelRef} className="h-4" />
 
           <EndOfFeed />
         </div>
