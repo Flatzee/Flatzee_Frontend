@@ -26,6 +26,18 @@ export default function FeedPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const enable = () => {
+      const isMobile = window.innerWidth < 768;
+      document.body.classList.toggle("feed-snap", isMobile);
+    };
+    enable();
+    window.addEventListener("resize", enable);
+    return () => window.removeEventListener("resize", enable);
+  }, []);
+
+
   const dismissTips = () => {
     try {
       sessionStorage.setItem("fz.feedTips", "1");
@@ -72,13 +84,25 @@ export default function FeedPage() {
     <div className="relative">
       <TopBar onApplySearch={onApplySearch} />
 
-      <main
+      {/* <main
         id="feed-scroll"
         className="h-[100dvh] overflow-y-auto overscroll-contain bg-neutral-50
                    pt-[calc(var(--topstrip-h)+var(--searchbar-h))]
                    md:pb-0 pb-[calc(var(--bottombar-h)+var(--bottom-safe))]
                    snap-y snap-mandatory scroll-smooth"
-      >
+      > */}
+      <main
+         id="feed-scroll"
+          className="
+            bg-neutral-50
+            pt-[var(--searchbar-h)] 
+            pb-[calc(var(--bottombar-h)+var(--bottom-safe))]
+            scroll-smooth
+            /* Desktop keeps inner scroller & snap */
+            md:h-screen-dvh md:overflow-y-auto md:snap-y md:snap-mandatory
+          "
+        >
+
         <div className="mx-auto grid max-w-7xl gap-6 px-3 md:px-6">
           {/* First-time inline tips (below the bar, never hidden) */}
           {showTips && (

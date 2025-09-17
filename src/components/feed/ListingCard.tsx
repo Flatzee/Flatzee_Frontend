@@ -88,9 +88,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      className={`relative
-        h-[calc(100dvh-var(--searchbar-h)-var(--bottombar-h)-var(--bottom-safe))]
-        min-h-[420px] w-full snap-start snap-always overflow-hidden rounded-2xl border
+
+      className={`snap-card relative 
+        min-h-[420px] w-full snap-start snap-always overflow-hidden rounded-2xl border 
         ${isPremium ? "ring-1 ring-amber-300/70" : ""}
         md:h-auto ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
     >

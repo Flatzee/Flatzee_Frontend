@@ -134,4 +134,40 @@
   }
 }
 
+/* === Mobile root scroll snap (≤ md) ================================ */
+/* === Mobile root scroll snap (≤ md) ================================ */
+@media (max-width: 767px) {
+  /* Enable snap on the ROOT scroller. Some Safari/iOS builds prefer it on <html>. */
+  html.feed-snap, body.feed-snap {
+    scroll-snap-type: y mandatory;
+    /* Reserve space for fixed bars so snap targets don't tuck under them */
+    scroll-padding-top: var(--searchbar-h, 56px);
+    scroll-padding-bottom: calc(var(--bottombar-h, 56px) + var(--bottom-safe, env(safe-area-inset-bottom, 0px)));
+    overscroll-behavior-y: contain;
+  }
+
+  /* Each card must be tall enough and declare snap alignment */
+  .snap-card {
+    min-height: calc(
+      var(--vvh, 100dvh)
+      - var(--searchbar-h, 56px)
+      - var(--bottombar-h, 56px)
+      - var(--bottom-safe, env(safe-area-inset-bottom, 0px))
+    );
+    scroll-snap-align: start;
+    scroll-snap-stop: normal; /* use 'always' if you want harder snapping */
+    /* Also ensure proper margins if any card has its own sticky bits */
+    scroll-margin-top: var(--searchbar-h, 56px);
+    scroll-margin-bottom: calc(var(--bottombar-h, 56px) + var(--bottom-safe, env(safe-area-inset-bottom, 0px)));
+  }
+}
+
+/* Utility: dvh fallback for browsers missing dynamic units */
+.h-screen-dvh { height: 100dvh; }
+@supports not (height: 100dvh) {
+  .h-screen-dvh { height: 100vh; height: -webkit-fill-available; }
+}
+
+
+
 @import "../styles/layout.css";

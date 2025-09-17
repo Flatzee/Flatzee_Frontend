@@ -5,6 +5,7 @@ type Props = {
 };
 
 export default function EndOfFeed({ onSearch }: Props) {
+
   const openSearch = () => {
     if (onSearch) return onSearch();
     // Fallback: click the mobile pill if present
@@ -13,21 +14,23 @@ export default function EndOfFeed({ onSearch }: Props) {
   };
 
   const backToTop = () => {
-    const scroller = document.getElementById("feed-scroll");
-    scroller?.scrollTo({ top: 0, behavior: "smooth" });
+      if (window.innerWidth < 768) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      document.getElementById("feed-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
     <section
       className="
-        relative
-        h-[calc(100dvh-var(--searchbar-h)-var(--bottombar-h)-var(--bottom-safe))]
+        snap-card relative
         min-h-[420px]
         w-full snap-start snap-always overflow-hidden rounded-2xl border
         bg-white grid place-items-center p-6 text-center
       "
-      aria-label="End of results"
-    >
+       aria-label="End of results"
+     >
       <div className="max-w-xs">
         <div className="text-2xl font-semibold">You’re all caught up</div>
         <p className="mt-2 text-sm text-neutral-600">
