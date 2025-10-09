@@ -7,17 +7,29 @@ import ListingCard from "@/components/feed/ListingCard";
 import EndOfFeed from "@/components/feed/EndOfFeed";
 import { LISTINGS } from "@/data/listings";
 
+
 type Search = { destination?: string; checkIn?: Date; checkOut?: Date; guests?: number };
 
 export default function FeedPage() {
   const [search, setSearch] = useState<Search>({});
-  const [showTips, setShowTips] = useState(false); // first-time inline tips (visible below bar)
+  const [showTips, setShowTips] = useState(false);
 
-  // First-time inline tips (mobile only). We show them inside the feed, right
-  // under the sticky bar so they never hide behind it. Auto-hide after 10s.
+  // ❌ remove: useScrollSync();
+  // ✅ Enable root scroll-snap on this route only (mobile CSS targets html.feed-snap/body.feed-snap)
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    html.classList.add("feed-snap");
+    body.classList.add("feed-snap");
+    return () => {
+      html.classList.remove("feed-snap");
+      body.classList.remove("feed-snap");
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.innerWidth >= 768) return; // mobile only
+    if (window.innerWidth >= 768) return;
     const seen = sessionStorage.getItem("fz.feedTips") === "1";
     if (!seen) {
       setShowTips(true);
@@ -26,31 +38,15 @@ export default function FeedPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const enable = () => {
-      const isMobile = window.innerWidth < 768;
-      document.body.classList.toggle("feed-snap", isMobile);
-    };
-    enable();
-    window.addEventListener("resize", enable);
-    return () => window.removeEventListener("resize", enable);
-  }, []);
-
-
   const dismissTips = () => {
-    try {
-      sessionStorage.setItem("fz.feedTips", "1");
-    } catch {}
+    try { sessionStorage.setItem("fz.feedTips", "1"); } catch {}
     setShowTips(false);
   };
 
   const { items, soft } = useMemo(() => {
     const all = [...LISTINGS];
     const dest = (search.destination || "").trim().toLowerCase();
-    if (!dest) {
-      return { items: all, soft: false };
-    }
+    if (!dest) return { items: all, soft: false };
     let maxScore = 0;
     const scored = all
       .map((l) => {
@@ -63,48 +59,25 @@ export default function FeedPage() {
       })
       .sort((a, b) => b.score - a.score)
       .map((x) => x.l);
-    const soft = maxScore < 100; // no strong startsWith match
+    const soft = maxScore < 100;
     return { items: scored, soft };
   }, [search]);
 
   const onApplySearch = (v: SearchState) => {
-    try {
-      sessionStorage.setItem("fz.feedTips", "1"); // once they interact, hide tips
-    } catch {}
+    try { sessionStorage.setItem("fz.feedTips", "1"); } catch {}
     setShowTips(false);
-    setSearch({
-      destination: v.destination,
-      checkIn: v.checkIn,
-      checkOut: v.checkOut,
-      guests: v.guests,
-    });
+    setSearch({ destination: v.destination, checkIn: v.checkIn, checkOut: v.checkOut, guests: v.guests });
   };
 
   return (
     <div className="relative">
-      <TopBar onApplySearch={onApplySearch} />
+      <div className="sticky top-0 z-50">
+        <TopBar onApplySearch={onApplySearch} />
+      </div>
 
-      {/* <main
-        id="feed-scroll"
-        className="h-[100dvh] overflow-y-auto overscroll-contain bg-neutral-50
-                   pt-[calc(var(--topstrip-h)+var(--searchbar-h))]
-                   md:pb-0 pb-[calc(var(--bottombar-h)+var(--bottom-safe))]
-                   snap-y snap-mandatory scroll-smooth"
-      > */}
-      <main
-         id="feed-scroll"
-          className="
-            bg-neutral-50
-            pt-[var(--searchbar-h)] 
-            pb-[calc(var(--bottombar-h)+var(--bottom-safe))]
-            scroll-smooth
-            /* Desktop keeps inner scroller & snap */
-            md:h-screen-dvh md:overflow-y-auto md:snap-y md:snap-mandatory
-          "
-        >
-
-        <div className="mx-auto grid max-w-7xl gap-6 px-3 md:px-6">
-          {/* First-time inline tips (below the bar, never hidden) */}
+      {/* ✅ Let the PAGE scroll (no inner scroller!) */}
+      <main className="bg-neutral-50 pt-[var(--searchbar-h)] pb-[calc(var(--bottombar-h)+var(--bottom-safe))]">
+        <div className="mx-auto grid max-w-7xl gap-2 md:gap-6 px-0 md:px-6">
           {showTips && (
             <div
               role="status"

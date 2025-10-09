@@ -51,32 +51,34 @@ export default function TopBar({ onApplySearch }: Props) {
   }, []);
 
   useEffect(() => {
-  const root = () => {
-    // mobile: window scroll, desktop: inner scroller (if you still want)
-    return window.innerWidth < 768
-      ? window
-      : document.getElementById("feed-scroll") || window;
-  };
+    const getScroller = () => {
+      // Mobile: root window scroll enables chrome shrinking
+      // Desktop: inner scroller for traditional behavior
+      return window.innerWidth < 768
+        ? window
+        : document.getElementById("feed-scroll") || window;
+    };
 
-  let ticking = false;
-  const onScroll = () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const y = (window.innerWidth < 768)
-        ? window.scrollY
-        : (document.getElementById("feed-scroll")?.scrollTop || 0);
-      const collapsed = y > 16;
-      setMobileCollapsed(collapsed);
-      document.documentElement.setAttribute("data-top-collapsed", collapsed ? "1" : "0");
-      ticking = false;
-    });
-  };
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = (window.innerWidth < 768)
+          ? window.scrollY
+          : (document.getElementById("feed-scroll")?.scrollTop || 0);
+        const collapsed = y > 16;
+        setMobileCollapsed(collapsed);
+        document.documentElement.setAttribute("data-top-collapsed", collapsed ? "1" : "0");
+        ticking = false;
+      });
+    };
 
-  const el: any = root();
-  el.addEventListener("scroll", onScroll, { passive: true });
-  return () => el.removeEventListener("scroll", onScroll);
-}, []);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scroller: any = getScroller();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
 
 
   // first-time snackbar (mobile only)
@@ -108,7 +110,9 @@ export default function TopBar({ onApplySearch }: Props) {
     if (typeof window === "undefined") return;
     writeBarHeights();
     const ro = new ResizeObserver(writeBarHeights);
-    barRef.current && ro.observe(barRef.current);
+    if (barRef.current) {
+      ro.observe(barRef.current);
+    }
     window.addEventListener("resize", writeBarHeights, { passive: true });
     return () => {
       ro.disconnect();

@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-white text-neutral-900">
-        {/* makes --vvh available */}
+        {/* Visual viewport provider enables chrome shrinking and snap stability */}
         <ViewportProvider />
         {children}
       </body>

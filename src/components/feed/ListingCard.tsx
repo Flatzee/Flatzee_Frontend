@@ -22,30 +22,30 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [showScrollHint, setShowScrollHint] = useState(true);
   const router = useRouter();
 
-  // --- Swipe LEFT to open listing ---
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const swiping = useRef(false);
+  // // --- Swipe LEFT to open listing ---
+  // const startX = useRef(0);
+  // const startY = useRef(0);
+  // const swiping = useRef(false);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    swiping.current = true;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!swiping.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX.current;
-    const dy = t.clientY - startY.current;
-    if (dx < -70 && Math.abs(dy) < 40) {
-      swiping.current = false;
-      openListing();
-    }
-  };
-  const onTouchEnd = () => {
-    swiping.current = false;
-  };
+  // const onTouchStart = (e: React.TouchEvent) => {
+  //   const t = e.touches[0];
+  //   startX.current = t.clientX;
+  //   startY.current = t.clientY;
+  //   swiping.current = true;
+  // };
+  // const onTouchMove = (e: React.TouchEvent) => {
+  //   if (!swiping.current) return;
+  //   const t = e.touches[0];
+  //   const dx = t.clientX - startX.current;
+  //   const dy = t.clientY - startY.current;
+  //   if (dx < -70 && Math.abs(dy) < 40) {
+  //     swiping.current = false;
+  //     openListing();
+  //   }
+  // };
+  // const onTouchEnd = () => {
+  //   swiping.current = false;
+  // };
 
   const openListing = () => {
     setSlideOut(true);
@@ -85,14 +85,14 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <section
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      // onTouchStart={onTouchStart}
+      // onTouchMove={onTouchMove}
+      // onTouchEnd={onTouchEnd}
 
       className={`snap-card relative 
-        min-h-[420px] w-full snap-start snap-always overflow-hidden rounded-2xl border 
+        w-full overflow-hidden rounded-2xl border 
         ${isPremium ? "ring-1 ring-amber-300/70" : ""}
-        md:h-auto ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
+        ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
     >
       {/* Featured/Sponsored pill */}
       {primaryBadge && (
@@ -104,11 +104,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
       )}
 
-      <ImageCarousel
-        images={listing.images}
-        onOverswipeRightAtEnd={overswipe}
-        onFirstInteraction={() => setShowImageTip(false)}
-      />
+       {/* Concrete height for the media region = full slide */}
+        <div className="relative w-full" style={{ height: "var(--slide-h)" }}>
+          <ImageCarousel
+            className="h-full"
+            images={listing.images}
+            onOverswipeRightAtEnd={overswipe}
+            onFirstInteraction={() => setShowImageTip(false)}
+          />
+      +  </div>
 
       {showImageTip && <ImageNavTip onDismiss={() => setShowImageTip(false)} />}
 
@@ -116,10 +120,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-44 bg-gradient-to-t from-black/65 via-black/35 to-transparent" />
 
       {/* Text block anchored to bottom (expands upward as needed) */}
-      <div className="absolute inset-x-0 bottom-0 z-20 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] text-white">
+       <div className="absolute inset-x-0 bottom-0 z-20 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] text-white">
         <div className="mb-1 flex items-center gap-2 text-xs">
           <span className="inline-flex items-center rounded-full bg-black/45 px-2 py-0.5">
-            <Star className="mr-1 h-3 w-3" /> {listing.rating} ({listing.reviews})
+            <Star className="mr-1 h-3 w-3" /> {listing.rating} ({listing.reviews}) 
           </span>
           {extras.verified && (
             <span className="inline-flex items-center rounded-full bg-black/45 px-2 py-0.5">
