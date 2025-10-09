@@ -104,15 +104,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
       )}
 
-       {/* Concrete height for the media region = full slide */}
-        <div className="relative w-full" style={{ height: "var(--slide-h)" }}>
-          <ImageCarousel
-            className="h-full"
-            images={listing.images}
-            onOverswipeRightAtEnd={overswipe}
-            onFirstInteraction={() => setShowImageTip(false)}
-          />
-      +  </div>
+    {/* /* Media fills the entire slide */}
+     <div className="absolute inset-0 z-0">
+       <ImageCarousel
+         className="w-full h-full"
+         images={listing.images}
+         onOverswipeRightAtEnd={overswipe}
+         onFirstInteraction={() => setShowImageTip(false)}
+       />
+     </div>
 
       {showImageTip && <ImageNavTip onDismiss={() => setShowImageTip(false)} />}
 

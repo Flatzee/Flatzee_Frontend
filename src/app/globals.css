@@ -177,7 +177,7 @@
       - var(--bottombar-h, 56px)
       - var(--bottom-safe, 0px)
     );
-    min-height: var(--slide-h);
+    height: var(--slide-h);
   }
 }
 
@@ -190,7 +190,7 @@
       - var(--bottombar-h, 56px)
       - var(--bottom-safe, 0px)
     );
-    min-height: var(--slide-h);
+    height: var(--slide-h);
   }
 }
 

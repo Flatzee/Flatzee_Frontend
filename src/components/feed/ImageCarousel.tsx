@@ -8,6 +8,7 @@ type Props = {
   onOverswipeRightAtEnd?: () => void; // called when user swipes forward on last slide
   onFirstInteraction?: () => void;
   className?: string;
+  disableOverswipe?: boolean;
 };
 
 const SWIPE_THRESHOLD_PX = 60;   // distance to trigger slide if slow
@@ -20,7 +21,7 @@ export default function ImageCarousel({
   images,
   onOverswipeRightAtEnd,
   onFirstInteraction,
-  className,
+  className, disableOverswipe
 }: Props) {
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);        // current drag delta
@@ -110,7 +111,7 @@ export default function ImageCarousel({
     }
 
     // Overswipe forward on last slide -> open listing
-    if (atEnd && (totalDx < -OVERSWIPE_STRONG_PX || velocity > OVERSWIPE_VELOCITY)) {
+    if (!disableOverswipe && atEnd && (totalDx < -OVERSWIPE_STRONG_PX || velocity > OVERSWIPE_VELOCITY)) {
       setDragging(false);
       setDragX(0);
       onOverswipeRightAtEnd?.();
@@ -142,7 +143,8 @@ export default function ImageCarousel({
     <div
       ref={containerRef}
       className={clsx(
-        "relative w-full h-full overflow-hidden touch-pan-y select-none", // <-- h-full so it fills the slide
+        "relative w-full h-full overflow-hidden touch-pan-y select-none",
+        className // <-- h-full so it fills the slide
       )}
       role="group"
       aria-roledescription="carousel"
