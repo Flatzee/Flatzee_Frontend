@@ -22,30 +22,30 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [showScrollHint, setShowScrollHint] = useState(true);
   const router = useRouter();
 
-  // --- Swipe LEFT to open listing ---
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const swiping = useRef(false);
+  // // --- Swipe LEFT to open listing ---
+  // const startX = useRef(0);
+  // const startY = useRef(0);
+  // const swiping = useRef(false);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    swiping.current = true;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!swiping.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX.current;
-    const dy = t.clientY - startY.current;
-    if (dx < -70 && Math.abs(dy) < 40) {
-      swiping.current = false;
-      openListing();
-    }
-  };
-  const onTouchEnd = () => {
-    swiping.current = false;
-  };
+  // const onTouchStart = (e: React.TouchEvent) => {
+  //   const t = e.touches[0];
+  //   startX.current = t.clientX;
+  //   startY.current = t.clientY;
+  //   swiping.current = true;
+  // };
+  // const onTouchMove = (e: React.TouchEvent) => {
+  //   if (!swiping.current) return;
+  //   const t = e.touches[0];
+  //   const dx = t.clientX - startX.current;
+  //   const dy = t.clientY - startY.current;
+  //   if (dx < -70 && Math.abs(dy) < 40) {
+  //     swiping.current = false;
+  //     openListing();
+  //   }
+  // };
+  // const onTouchEnd = () => {
+  //   swiping.current = false;
+  // };
 
   const openListing = () => {
     setSlideOut(true);
@@ -66,7 +66,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   useEffect(() => {
     if (!showImageTip) return;
     const t = window.setTimeout(() => {
-      try { sessionStorage.setItem("tipImageNav", "1"); } catch {}
+      try { sessionStorage.setItem("tipImageNav", "1"); } catch { }
       setShowImageTip(false);
     }, 10000);
     return () => window.clearTimeout(t);
@@ -85,14 +85,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <section
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      className={`relative
-        h-[calc(100dvh-var(--searchbar-h)-var(--bottombar-h)-var(--bottom-safe))]
-        min-h-[420px] w-full snap-start snap-always overflow-hidden rounded-2xl border
-        ${isPremium ? "ring-1 ring-amber-300/70" : ""}
-        md:h-auto ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
+      className={`snap-card relative w-full overflow-hidden rounded-2xl border
+    bg-black
+    ${isPremium ? "ring-1 ring-amber-300/70" : ""}
+    ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
     >
       {/* Featured/Sponsored pill */}
       {primaryBadge && (
@@ -104,11 +100,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
       )}
 
-      <ImageCarousel
-        images={listing.images}
-        onOverswipeRightAtEnd={overswipe}
-        onFirstInteraction={() => setShowImageTip(false)}
-      />
+      {/* Media fills the entire slide */}
+      <div className="absolute inset-0 z-0">
+        <ImageCarousel
+          className="h-full w-full"  // <-- important
+          images={listing.images}
+          onOverswipeRightAtEnd={overswipe}
+          onFirstInteraction={() => setShowImageTip(false)}
+        />
+      </div>
 
       {showImageTip && <ImageNavTip onDismiss={() => setShowImageTip(false)} />}
 
@@ -139,7 +139,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
 
         {extras.short && (
-           <p className="mt-1.5 max-w-xl text-[13px] leading-snug text-white/90">
+          <p className="mt-1.5 max-w-xl text-[13px] leading-snug text-white/90">
             {extras.short}
           </p>
         )}

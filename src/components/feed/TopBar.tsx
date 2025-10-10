@@ -31,6 +31,7 @@ export default function TopBar({ onApplySearch }: Props) {
   // ui state
   const [showSuggest, setShowSuggest] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileCollapsed, setMobileCollapsed] = useState(false);
 
   // first-time snackbar hint
   const [showHint, setShowHint] = useState(false);
@@ -48,6 +49,37 @@ export default function TopBar({ onApplySearch }: Props) {
       if (saved) setDestination(saved);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const getScroller = () => {
+      // Mobile: root window scroll enables chrome shrinking
+      // Desktop: inner scroller for traditional behavior
+      return window.innerWidth < 768
+        ? window
+        : document.getElementById("feed-scroll") || window;
+    };
+
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = (window.innerWidth < 768)
+          ? window.scrollY
+          : (document.getElementById("feed-scroll")?.scrollTop || 0);
+        const collapsed = y > 16;
+        setMobileCollapsed(collapsed);
+        document.documentElement.setAttribute("data-top-collapsed", collapsed ? "1" : "0");
+        ticking = false;
+      });
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scroller: any = getScroller();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
+
 
   // first-time snackbar (mobile only)
   useEffect(() => {
@@ -78,7 +110,9 @@ export default function TopBar({ onApplySearch }: Props) {
     if (typeof window === "undefined") return;
     writeBarHeights();
     const ro = new ResizeObserver(writeBarHeights);
-    barRef.current && ro.observe(barRef.current);
+    if (barRef.current) {
+      ro.observe(barRef.current);
+    }
     window.addEventListener("resize", writeBarHeights, { passive: true });
     return () => {
       ro.disconnect();

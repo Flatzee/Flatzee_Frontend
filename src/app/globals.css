@@ -118,6 +118,9 @@
   --bottombar-h: 56px;      /* h-14 */
   --top-safe: env(safe-area-inset-top, 0px);
   --bottom-safe: env(safe-area-inset-bottom, 0px);
+  
+  /* Visual viewport height - fallback for browsers without dvh */
+  --vvh: 100vh;
 }
 
 .topstrip-transition {
@@ -131,6 +134,117 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* === Root-level scroll snap for mobile browser chrome shrinking ===== */
+/* Mobile: Root scroller enables browser chrome shrinking */
+@media (max-width: 767px) {
+  html.feed-snap {
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
+    scroll-padding-top: var(--searchbar-h, 56px);
+  }
+  
+  /* Let native snap do the work; smooth can fight with vv-resize */
+ body.feed-snap { scroll-behavior: auto; }
+}
+
+/* Desktop: Keep inner scroller for traditional behavior */
+@media (min-width: 768px) {
+  #feed-scroll {
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
+    scroll-padding-top: var(--searchbar-h, 56px);
+  }
+}
+
+.snap-card {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* Mobile: each card fills viewport area between top & bottom bars */
+@media (max-width: 767px) {
+  .snap-card {
+    --slide-h: calc(
+      var(--vvh, 100vh)
+      - var(--searchbar-h, 56px)
+      - var(--bottombar-h, 56px)
+      - var(--top-safe, 0px)
+      - var(--bottom-safe, 0px)
+    );
+    height: var(--slide-h);
+
+    /* Keep the whole card clear of fixed bars */
+    margin-top: var(--searchbar-h, 56px);
+    margin-bottom: var(--bottombar-h, 56px);
+  }
+
+  html.feed-snap {
+    scroll-snap-type: y mandatory;
+    /* Ensure snapping aligns to visible window bounds */
+    scroll-padding-top: var(--searchbar-h, 56px);
+    scroll-padding-bottom: var(--bottombar-h, 56px);
+  }
+}
+
+/* Desktop: same idea with classic vh (use your real desktop bar sizes if any) */
+@media (min-width: 768px) {
+  .snap-card {
+    --slide-h: calc(
+      100vh
+      - var(--searchbar-h, 56px)
+      - var(--bottombar-h, 56px)
+    );
+    height: var(--slide-h);
+    margin-top: var(--searchbar-h, 56px);
+    margin-bottom: var(--bottombar-h, 56px);
+  }
+
+  #feed-scroll {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--searchbar-h, 56px);
+    scroll-padding-bottom: var(--bottombar-h, 56px);
+  }
+}
+
+
+
+/* Utility: dvh fallback for browsers missing dynamic units */
+.h-screen-dvh { height: 100dvh; }
+@supports not (height: 100dvh) {
+  .h-screen-dvh { height: 100vh; height: -webkit-fill-available; }
+}
+
+/* Mobile scrollbar hiding for cleaner TikTok-style experience */
+@media (max-width: 767px) {
+  html.feed-snap::-webkit-scrollbar {
+    display: none;
+  }
+  
+  html.feed-snap {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Reduce bounce/rubber-band on iOS */
+  body.feed-snap {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Accessibility: Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html.feed-snap {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+  
+  .snap-card {
+    scroll-snap-align: none;
   }
 }
 

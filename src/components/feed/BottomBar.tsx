@@ -36,8 +36,12 @@ export default function BottomBar() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-center justify-around border-t bg-white/90 backdrop-blur md:hidden"
-      style={{ paddingBottom: "var(--bottom-safe)" }}
+      className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t bg-white/90 backdrop-blur md:hidden"
+      style={{
+        height: "calc(var(--bottombar-h) + var(--bottom-safe))",
+        paddingBottom: "var(--bottom-safe)",
+        boxSizing: "border-box",
+      }}
       aria-label="Bottom navigation"
     >
       <Item icon={Home} label="Home" />

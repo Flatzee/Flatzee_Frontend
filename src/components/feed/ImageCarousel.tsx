@@ -1,157 +1,191 @@
 "use client";
 
-import * as React from "react";
-import Image from "next/image";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import clsx from "clsx";
 
 type Props = {
   images: string[];
-  className?: string;
-  onOverswipeRightAtEnd?: () => void;
-  disableOverswipe?: boolean;
+  onOverswipeRightAtEnd?: () => void; // called when user swipes forward on last slide
   onFirstInteraction?: () => void;
+  className?: string;
+  disableOverswipe?: boolean;
 };
+
+const SWIPE_THRESHOLD_PX = 60;   // distance to trigger slide if slow
+const VELOCITY_THRESHOLD = 0.4; // px/ms (fast flick)
+const OVERSWIPE_STRONG_PX = 96;  // require a hard swipe to open listing
+const OVERSWIPE_VELOCITY = 0.5;
+const MAX_OVERSWIPE_PX = 56;     // how far we allow pulling past edges visually
 
 export default function ImageCarousel({
   images,
-  className,
   onOverswipeRightAtEnd,
-  disableOverswipe,
   onFirstInteraction,
+  className, disableOverswipe
 }: Props) {
-  const trackRef = React.useRef<HTMLDivElement>(null);
-  const rootRef = React.useRef<HTMLDivElement>(null);
-  const [index, setIndex] = React.useState(0);
-  const [animKey, setAnimKey] = React.useState(0);
-  const interactedRef = React.useRef(false);
+  const [index, setIndex] = useState(0);
+  const [dragX, setDragX] = useState(0);        // current drag delta
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const lastX = useRef(0);
+  const startT = useRef(0);
+  const axisLocked = useRef<"x" | "y" | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const i = Math.round(el.scrollLeft / el.clientWidth);
-      setIndex(i);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  const clampIndex = useCallback((i: number) => {
+    if (i < 0) return 0;
+    if (i > images.length - 1) return images.length - 1;
+    return i;
+  }, [images.length]);
 
-  // keyboard navigation
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-    };
-    const root = rootRef.current;
-    if (!root) return;
-    root.addEventListener("keydown", onKey);
-    return () => root.removeEventListener("keydown", onKey);
-  });
-
-  React.useEffect(() => {
-    // reset progress animation on image change
-    setAnimKey((k) => k + 1);
-  }, [index]);
-
-  const to = (i: number) => {
-    const el = trackRef.current;
-    if (!el) return;
-    const clamped = Math.max(0, Math.min(i, images.length - 1));
-    el.scrollTo({ left: el.clientWidth * clamped, behavior: "smooth" });
-    setIndex(clamped);
+  // Helpers
+  const animateTo = (targetIndex: number) => {
+    setDragging(false);
+    setDragX(0);
+    setIndex(clampIndex(targetIndex));
   };
 
-  const markInteracted = () => {
-    if (!interactedRef.current) {
-      interactedRef.current = true;
-      onFirstInteraction?.();
+  // pointer handlers
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    axisLocked.current = null;
+    setDragging(true);
+    startX.current = e.clientX;
+    lastX.current = e.clientX;
+    startY.current = e.clientY;
+    startT.current = performance.now();
+    onFirstInteraction?.();
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+
+    // lock axis after small move
+    if (!axisLocked.current) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        axisLocked.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
     }
-  };
 
-  const prev = () => {
-    markInteracted();
-    to(index - 1);
-  };
-  const next = () => {
-    markInteracted();
-    if (index >= images.length - 1) {
-      if (!disableOverswipe) onOverswipeRightAtEnd?.();
+    if (axisLocked.current === "y") {
+      // let the page scroll vertically; don't treat as swipe
+      setDragging(false);
+      setDragX(0);
       return;
     }
-    to(index + 1);
+
+    // Prevent vertical scrolling when we’re swiping horizontally
+    e.preventDefault();
+
+    // Limit overswipe at edges
+    const atStart = index === 0;
+    const atEnd = index === images.length - 1;
+    let nextDrag = dx;
+    if ((atStart && dx > 0) || (atEnd && dx < 0)) {
+      // resistance at edges
+      nextDrag = Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, MAX_OVERSWIPE_PX);
+    }
+
+    setDragX(nextDrag);
+    lastX.current = e.clientX;
   };
 
-  // ✅ compute hooks BEFORE any early returns
-  const cursorStyle = React.useMemo(
-    () => ({
-      left: { cursor: "w-resize" as const },
-      mid: { cursor: "default" as const },
-      right: { cursor: "e-resize" as const },
-    }),
-    []
-  );
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    (e.target as Element).releasePointerCapture?.(e.pointerId);
 
-  if (images.length === 0) return null;
+    const totalDx = e.clientX - startX.current;
+    const dt = Math.max(1, performance.now() - startT.current);
+    const velocity = Math.abs(e.clientX - lastX.current) / dt;
+
+    const atEnd = index === images.length - 1;
+
+    // Decide next index
+    let next = index;
+    if (Math.abs(totalDx) > SWIPE_THRESHOLD_PX || velocity > VELOCITY_THRESHOLD) {
+      next = totalDx < 0 ? index + 1 : index - 1;
+    }
+
+    // Overswipe forward on last slide -> open listing
+    if (!disableOverswipe && atEnd && (totalDx < -OVERSWIPE_STRONG_PX || velocity > OVERSWIPE_VELOCITY)) {
+      setDragging(false);
+      setDragX(0);
+      onOverswipeRightAtEnd?.();
+      return;
+    }
+
+    animateTo(next);
+  };
+
+  // keyboard (accessibility)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") setIndex((i) => clampIndex(i - 1));
+      if (e.key === "ArrowRight") setIndex((i) => clampIndex(i + 1));
+    };
+    el.addEventListener("keydown", onKey);
+    return () => el.removeEventListener("keydown", onKey);
+  }, [clampIndex]);
+
+  // compute transform
+  const baseX = -index * 100; // percentage
+  const dragPct =
+    containerRef.current ? (dragX / containerRef.current.clientWidth) * 100 : 0;
+  const translate = `translate3d(${baseX + dragPct}%, 0, 0)`;
 
   return (
     <div
-      ref={rootRef}
-      className={`relative h-full w-full outline-none ${className || ""}`}
-      tabIndex={0}
+      ref={containerRef}
+      className={clsx("relative w-full h-full min-h-0 overflow-hidden touch-pan-y select-none", className)}
+      role="group"
       aria-roledescription="carousel"
-      aria-label="Listing images"
+      aria-label="Listing photos"
+      tabIndex={0}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
-      {/* top progress segments */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex gap-1 p-2">
-        {images.map((_, i) => (
-          <div key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-white/40">
-            <div
-              key={`${animKey}-${i}-${index === i}`}
-              className={`h-full ${index === i ? "bg-white" : "bg-white/60 w-0"}`}
-              style={
-                index === i
-                  ? { width: "100%", transition: prefersReducedMotion() ? undefined : "width 3s linear" }
-                  : undefined
-              }
-            />
-          </div>
-        ))}
-      </div>
-
+      {/* track */}
       <div
-        ref={trackRef}
-        className="carousel-track flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth touch-pan-y"
+        className={clsx(
+          "flex h-full will-change-transform",   // ⬅️ important - this makes the image fill container in each listing card
+          dragging ? "transition-none" : "transition-transform duration-200 ease-out"
+        )}
+        style={{ transform: translate }}
       >
         {images.map((src, i) => (
-          <div key={i} className="relative h-full w-full shrink-0 snap-start" style={{ inlineSize: "100%" }}>
-            <Image
+          <div key={i} className="relative w-full h-full shrink-0"> {/* <-- h-full */}
+            {/* image fills slide */}
+            {/* You can swap to <Image> if using next/image */}
+            <img
               src={src}
               alt=""
-              fill
-              sizes="100vw"
-              className="object-cover"
-              priority={i === 0}
+              className="block h-full w-full object-cover object-center"
+              draggable={false}
             />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
         ))}
       </div>
 
-      {/* click zones */}
-      <div className="absolute inset-0 z-10 flex">
-        <button aria-label="Previous image" onClick={prev} className="h-full w-[35%] bg-transparent" style={cursorStyle.left} />
-        <div aria-hidden className="h-full w-[30%]" style={cursorStyle.mid} />
-        <button aria-label="Next image" onClick={next} className="h-full w-[35%] bg-transparent" style={cursorStyle.right} />
+      {/* dots (optional) */}
+      <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center gap-2">
+        {images.map((_, i) => (
+          <span
+            key={i}
+            className={clsx(
+              "h-1 rounded-full bg-white/70",
+              i === index ? "w-10" : "w-6 opacity-60"
+            )}
+          />
+        ))}
       </div>
-
-      <style>{`
-        .carousel-track::-webkit-scrollbar { display: none; }
-        .carousel-track { scrollbar-width: none; -ms-overflow-style: none; }
-      `}</style>
     </div>
   );
-}
-
-function prefersReducedMotion() {
-  if (typeof window === "undefined") return false;
-  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
