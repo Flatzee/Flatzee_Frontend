@@ -117,6 +117,8 @@ export default function ViewportProvider() {
 
     // First user scroll → freeze ~0.9s, but NOT if programmatic
     /* Smooth-stabilize instead of hard-freeze  */
+    let wheelTimer: number | undefined; // or: let wheelTimer: ReturnType<typeof setTimeout> | undefined;
+
     const onFirstScroll = () => {
       if (html.getAttribute("data-progscroll") === "1") return;
       if (frozenRef.current) return;
@@ -125,31 +127,43 @@ export default function ViewportProvider() {
       frozenRef.current = true;
 
       // adaptive tracking window: update vvH every 150 ms for ~1 s
-      let t0 = performance.now();
+      const t0 = performance.now(); // prefer-const ✅
+
       const tick = () => {
         if (!frozenRef.current) return;
         const dt = performance.now() - t0;
         setVVH(); // keep layout aligned with live viewport
-        if (dt < 1000) requestAnimationFrame(tick);
-        else {
+        if (dt < 1000) {
+          requestAnimationFrame(tick);
+        } else {
           frozenRef.current = false;
-          setVVH();          // final correction
+          setVVH();           // final correction
           scheduleFinalize(); // optional snap settle
         }
       };
+
       requestAnimationFrame(tick);
     };
 
+    // If attached to window via addEventListener('pointerdown', ...)
+    // use native event types. If used as React props, you can switch to React.PointerEventHandler.
+    const onPointerDown = (_e?: PointerEvent) => {
+      interactingRef.current = true;
+    };
 
-    const onPointerDown = () => { interactingRef.current = true; };
-    const onPointerUp = () => {
+    const onPointerUp = (_e?: PointerEvent) => {
       interactingRef.current = false;
       scheduleFinalize();
     };
-    const onWheel = () => {
+
+    const onWheel = (_e?: WheelEvent) => {
       interactingRef.current = true;
-      window.clearTimeout((onWheel as any)._t);
-      (onWheel as any)._t = window.setTimeout(() => {
+
+      if (wheelTimer !== undefined) {
+        window.clearTimeout(wheelTimer); // typed, no any ✅
+      }
+
+      wheelTimer = window.setTimeout(() => {
         interactingRef.current = false;
         scheduleFinalize();
       }, 200);
