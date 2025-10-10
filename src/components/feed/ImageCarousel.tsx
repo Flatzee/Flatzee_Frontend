@@ -142,10 +142,7 @@ export default function ImageCarousel({
   return (
     <div
       ref={containerRef}
-      className={clsx(
-        "relative w-full h-full overflow-hidden touch-pan-y select-none",
-        className // <-- h-full so it fills the slide
-      )}
+      className={clsx("relative w-full h-full min-h-0 overflow-hidden touch-pan-y select-none", className)}
       role="group"
       aria-roledescription="carousel"
       aria-label="Listing photos"
@@ -158,7 +155,7 @@ export default function ImageCarousel({
       {/* track */}
       <div
         className={clsx(
-          "flex will-change-transform",
+          "flex h-full will-change-transform",   // ⬅️ important - this makes the image fill container in each listing card
           dragging ? "transition-none" : "transition-transform duration-200 ease-out"
         )}
         style={{ transform: translate }}
@@ -170,7 +167,7 @@ export default function ImageCarousel({
             <img
               src={src}
               alt=""
-              className="block h-full w-full object-cover"
+              className="block h-full w-full object-cover object-center"
               draggable={false}
             />
           </div>

@@ -166,33 +166,51 @@
   content-visibility: auto;
 }
 
-/* Mobile: Use visual viewport height for proper chrome behavior */
-/* Mobile: slides sized to visual viewport */
+/* Mobile: each card fills viewport area between top & bottom bars */
 @media (max-width: 767px) {
   .snap-card {
-    /* exact slide height variable */
     --slide-h: calc(
       var(--vvh, 100vh)
       - var(--searchbar-h, 56px)
       - var(--bottombar-h, 56px)
+      - var(--top-safe, 0px)
       - var(--bottom-safe, 0px)
     );
     height: var(--slide-h);
+
+    /* Keep the whole card clear of fixed bars */
+    margin-top: var(--searchbar-h, 56px);
+    margin-bottom: var(--bottombar-h, 56px);
+  }
+
+  html.feed-snap {
+    scroll-snap-type: y mandatory;
+    /* Ensure snapping aligns to visible window bounds */
+    scroll-padding-top: var(--searchbar-h, 56px);
+    scroll-padding-bottom: var(--bottombar-h, 56px);
   }
 }
 
-/* Desktop: same idea with classic vh */
+/* Desktop: same idea with classic vh (use your real desktop bar sizes if any) */
 @media (min-width: 768px) {
   .snap-card {
     --slide-h: calc(
       100vh
       - var(--searchbar-h, 56px)
       - var(--bottombar-h, 56px)
-      - var(--bottom-safe, 0px)
     );
     height: var(--slide-h);
+    margin-top: var(--searchbar-h, 56px);
+    margin-bottom: var(--bottombar-h, 56px);
+  }
+
+  #feed-scroll {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--searchbar-h, 56px);
+    scroll-padding-bottom: var(--bottombar-h, 56px);
   }
 }
+
 
 
 /* Utility: dvh fallback for browsers missing dynamic units */

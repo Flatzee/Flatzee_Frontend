@@ -1,120 +1,184 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/**
- * Keeps --vvh in sync with the visual viewport and performs a single,
- * instant re-snap *after* the browser chrome finishes animating.
- * No resnaps during normal scroll; no smooth scrolling here.
- */
+/* ULTRA-STABLE VIEWPORT PROVIDER (refined)
+   - Android: 100svh (stable)
+   - iOS: debounced visualViewport, first-scroll freeze
+   - NEW: skip freeze during programmatic scrolls (data-progscroll="1")
+   - NEW: on unfreeze, force a fresh setVVH() so --vvh is never stale
+   - Honors data-nosettle="1" to skip snapping only (still updates --vvh)
+*/
 export default function ViewportProvider() {
   const finalizeTimer = useRef<number | null>(null);
-  const lastVVHRef = useRef<number>(0);
-  const settlingRef = useRef<boolean>(false);
-  const lastSettleAtRef = useRef<number>(0);
+  const resizeTimer = useRef<number | null>(null);
+  const freezeTimer = useRef<number | null>(null);
+  const frozenRef = useRef(false);
+  const interactingRef = useRef(false);
 
   useEffect(() => {
-  // ----- Platform gating -----
-  const ua = navigator.userAgent || "";
-  const isIOS =
-    /iP(hone|ad|od)/.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const supportsDVH = typeof CSS !== "undefined" && CSS.supports?.("height", "100dvh");
+    const html = document.documentElement;
 
-  // On Chromium/Brave/Android: let CSS handle it (no listeners = no jitter)
-  if (!isIOS && supportsDVH) {
-    document.documentElement.style.setProperty("--vvh", "100dvh");
-    return; // do not attach visualViewport listeners
-  }
+    const ua = navigator.userAgent || "";
+    const isIOS =
+      /iP(hone|ad|od)/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-  // ----- iOS/WebKit path: stabilize after chrome animation -----
-  const HEIGHT_EPS = 6;        // ignore tiny height changes (px)
-  const STABLE_MS = 100;       // how long the height must be stable
-  const SETTLE_COOLDOWN = 350; // don't resettle again within this window
+    const supports = (p: string, v: string) =>
+      typeof CSS !== "undefined" && CSS.supports?.(p, v);
 
-  let finalizeTimer: number | null = null;
-  let lastVVH = 0;
-  let lastSettleAt = 0;
+    // ANDROID / CHROMIUM → fixed (stable) height
+    if (!isIOS) {
+      const chosen = supports("height", "100svh")
+        ? "100svh"
+        : supports("height", "100dvh")
+          ? "100dvh"
+          : "100vh";
+      html.style.setProperty("--vvh", chosen);
+      return;
+    }
 
-  const setVVH = () => {
-    const h = window.visualViewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty("--vvh", `${h}px`);
-    return h;
-  };
+    // iOS / WebKit path
+    const HEIGHT_EPS = 12;
+    const STABLE_MS = 300;
+    const SETTLE_COOLDOWN = 500;
 
-  const getScrollPadTop = () => {
-    const cs = getComputedStyle(document.documentElement);
-    const pad = parseInt(cs.getPropertyValue("scroll-padding-top"));
-    const bar = parseInt(cs.getPropertyValue("--searchbar-h")) || 56;
-    return Number.isFinite(pad) && pad > 0 ? pad : bar;
-  };
+    let lastVVH = 0;
+    let lastSettleAt = 0;
 
-  const snapToNearest = () => {
-    const now = performance.now();
-    if (now - lastSettleAt < SETTLE_COOLDOWN) return;
-    lastSettleAt = now;
+    const setVVH = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      html.style.setProperty("--vvh", `${h}px`);
+      return h;
+    };
 
-    const cards = document.querySelectorAll(".snap-card");
-    if (!cards.length) return;
+    const getScrollPadTop = () => {
+      const cs = getComputedStyle(html);
+      const pad = parseInt(cs.getPropertyValue("scroll-padding-top"));
+      const bar = parseInt(cs.getPropertyValue("--searchbar-h")) || 56;
+      return Number.isFinite(pad) && pad > 0 ? pad : bar;
+    };
 
-    const padTop = getScrollPadTop();
-    const scrollTop = window.scrollY;
+    const snapToNearest = () => {
+      // Skip snapping if page opted out (but still allow measurement)
+      if (html.getAttribute("data-nosettle") === "1") return;
+      if (frozenRef.current || interactingRef.current) return;
 
-    let closest: Element | null = null;
-    let minDist = Infinity;
+      const now = performance.now();
+      if (now - lastSettleAt < SETTLE_COOLDOWN) return;
+      lastSettleAt = now;
 
-    cards.forEach((card) => {
-      const rect = (card as Element).getBoundingClientRect();
-      const targetY = scrollTop + rect.top - padTop;
-      const d = Math.abs(scrollTop - targetY);
-      if (d < minDist) {
-        minDist = d;
-        closest = card;
+      const cards = document.querySelectorAll<HTMLElement>(".snap-card");
+      if (!cards.length) return;
+
+      const padTop = getScrollPadTop();
+      const scrollTop = window.scrollY;
+      let closest: HTMLElement | null = null;
+      let minDist = Infinity;
+
+      cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        const targetY = scrollTop + rect.top - padTop;
+        const d = Math.abs(scrollTop - targetY);
+        if (d < minDist) {
+          minDist = d;
+          closest = card;
+        }
+      });
+
+      if (closest && minDist > 4) {
+        const rect = closest.getBoundingClientRect();
+        const targetY = window.scrollY + rect.top - padTop;
+        window.scrollTo({ top: targetY }); // instant correction
       }
-    });
+    };
 
-    if (closest && minDist > 2) {
-      const rect = (closest as Element).getBoundingClientRect();
-      const targetY = window.scrollY + rect.top - padTop;
-      // Instant correction; do NOT smooth (prevents tug-of-war with Safari)
-      window.scrollTo({ top: targetY });
-    }
-  };
+    const scheduleFinalize = () => {
+      if (finalizeTimer.current) window.clearTimeout(finalizeTimer.current);
+      finalizeTimer.current = window.setTimeout(() => {
+        snapToNearest();
+      }, STABLE_MS);
+    };
 
-  const scheduleFinalize = () => {
-    if (finalizeTimer) window.clearTimeout(finalizeTimer);
-    finalizeTimer = window.setTimeout(() => {
-      snapToNearest();
-    }, STABLE_MS);
-  };
+    // Debounced visualViewport resize (but still allowed while frozen? No.)
+    const onVVResize = () => {
+      if (frozenRef.current) return; // ignore noisy changes while frozen
+      if (resizeTimer.current) window.clearTimeout(resizeTimer.current);
+      resizeTimer.current = window.setTimeout(() => {
+        const h = window.visualViewport?.height ?? window.innerHeight;
+        if (Math.abs(h - lastVVH) > HEIGHT_EPS) {
+          lastVVH = h;
+          html.style.setProperty("--vvh", `${h}px`);
+          scheduleFinalize();
+        }
+      }, 180);
+    };
 
-  const onVVResize = () => {
-    const h = setVVH();
-    if (Math.abs(h - lastVVH) > HEIGHT_EPS) {
-      lastVVH = h;
-    }
-    // Only perform a single settle after the height stops changing
-    scheduleFinalize();
-  };
+    const onWindowResize = () => onVVResize();
 
-  const onWindowResize = () => onVVResize();
+    // First user scroll → freeze ~0.9s, but NOT if programmatic
+    /* Smooth-stabilize instead of hard-freeze  */
+    const onFirstScroll = () => {
+      if (html.getAttribute("data-progscroll") === "1") return;
+      if (frozenRef.current) return;
 
-  // Initial set
-  lastVVH = setVVH();
+      // mark as stabilizing (still allow gentle height tracking)
+      frozenRef.current = true;
 
-  // Listeners (minimal)
-  window.addEventListener("resize", onWindowResize, { passive: true });
-  window.addEventListener("orientationchange", onWindowResize);
-  window.visualViewport?.addEventListener("resize", onVVResize);
-  // Do NOT listen to visualViewport.scroll (too noisy on Chromium)
+      // adaptive tracking window: update vvH every 150 ms for ~1 s
+      let t0 = performance.now();
+      const tick = () => {
+        if (!frozenRef.current) return;
+        const dt = performance.now() - t0;
+        setVVH(); // keep layout aligned with live viewport
+        if (dt < 1000) requestAnimationFrame(tick);
+        else {
+          frozenRef.current = false;
+          setVVH();          // final correction
+          scheduleFinalize(); // optional snap settle
+        }
+      };
+      requestAnimationFrame(tick);
+    };
 
-  return () => {
-    if (finalizeTimer) window.clearTimeout(finalizeTimer);
-    window.removeEventListener("resize", onWindowResize);
-    window.removeEventListener("orientationchange", onWindowResize);
-    window.visualViewport?.removeEventListener("resize", onVVResize);
-  };
-}, []);
 
+    const onPointerDown = () => { interactingRef.current = true; };
+    const onPointerUp = () => {
+      interactingRef.current = false;
+      scheduleFinalize();
+    };
+    const onWheel = () => {
+      interactingRef.current = true;
+      window.clearTimeout((onWheel as any)._t);
+      (onWheel as any)._t = window.setTimeout(() => {
+        interactingRef.current = false;
+        scheduleFinalize();
+      }, 200);
+    };
+
+    // Initial set + listeners
+    lastVVH = setVVH();
+
+    window.addEventListener("resize", onWindowResize, { passive: true });
+    window.addEventListener("orientationchange", onWindowResize);
+    window.visualViewport?.addEventListener("resize", onVVResize);
+    window.addEventListener("pointerdown", onPointerDown, { passive: true });
+    window.addEventListener("pointerup", onPointerUp, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("scroll", onFirstScroll, { passive: true });
+
+    return () => {
+      [finalizeTimer, resizeTimer, freezeTimer].forEach((r) => {
+        if (r.current) window.clearTimeout(r.current);
+      });
+      window.removeEventListener("resize", onWindowResize);
+      window.removeEventListener("orientationchange", onWindowResize);
+      window.visualViewport?.removeEventListener("resize", onVVResize);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("scroll", onFirstScroll);
+    };
+  }, []);
 
   return null;
 }

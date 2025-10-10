@@ -66,7 +66,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   useEffect(() => {
     if (!showImageTip) return;
     const t = window.setTimeout(() => {
-      try { sessionStorage.setItem("tipImageNav", "1"); } catch {}
+      try { sessionStorage.setItem("tipImageNav", "1"); } catch { }
       setShowImageTip(false);
     }, 10000);
     return () => window.clearTimeout(t);
@@ -85,14 +85,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <section
-      // onTouchStart={onTouchStart}
-      // onTouchMove={onTouchMove}
-      // onTouchEnd={onTouchEnd}
-
-      className={`snap-card relative 
-        w-full overflow-hidden rounded-2xl border 
-        ${isPremium ? "ring-1 ring-amber-300/70" : ""}
-        ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
+      className={`snap-card relative w-full overflow-hidden rounded-2xl border
+    bg-black
+    ${isPremium ? "ring-1 ring-amber-300/70" : ""}
+    ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
     >
       {/* Featured/Sponsored pill */}
       {primaryBadge && (
@@ -104,15 +100,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
       )}
 
-    {/* /* Media fills the entire slide */}
-     <div className="absolute inset-0 z-0">
-       <ImageCarousel
-         className="w-full h-full"
-         images={listing.images}
-         onOverswipeRightAtEnd={overswipe}
-         onFirstInteraction={() => setShowImageTip(false)}
-       />
-     </div>
+      {/* Media fills the entire slide */}
+      <div className="absolute inset-0 z-0">
+        <ImageCarousel
+          className="h-full w-full"  // <-- important
+          images={listing.images}
+          onOverswipeRightAtEnd={overswipe}
+          onFirstInteraction={() => setShowImageTip(false)}
+        />
+      </div>
 
       {showImageTip && <ImageNavTip onDismiss={() => setShowImageTip(false)} />}
 
@@ -120,10 +116,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-44 bg-gradient-to-t from-black/65 via-black/35 to-transparent" />
 
       {/* Text block anchored to bottom (expands upward as needed) */}
-       <div className="absolute inset-x-0 bottom-0 z-20 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] text-white">
+      <div className="absolute inset-x-0 bottom-0 z-20 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] text-white">
         <div className="mb-1 flex items-center gap-2 text-xs">
           <span className="inline-flex items-center rounded-full bg-black/45 px-2 py-0.5">
-            <Star className="mr-1 h-3 w-3" /> {listing.rating} ({listing.reviews}) 
+            <Star className="mr-1 h-3 w-3" /> {listing.rating} ({listing.reviews})
           </span>
           {extras.verified && (
             <span className="inline-flex items-center rounded-full bg-black/45 px-2 py-0.5">
@@ -143,7 +139,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
 
         {extras.short && (
-           <p className="mt-1.5 max-w-xl text-[13px] leading-snug text-white/90">
+          <p className="mt-1.5 max-w-xl text-[13px] leading-snug text-white/90">
             {extras.short}
           </p>
         )}
