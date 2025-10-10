@@ -1,9 +1,11 @@
+// ListingCard.tsx (PATCH)
+// NOTE: you already import lucide icons; we'll use MapPin & X
 "use client";
 
-import { ArrowUpRight, BadgeCheck, Star, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, BadgeCheck, Star, Sparkles, MapPin, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Listing } from "@/data/listings";
-import ImageCarousel from "@/components/feed/ImageCarousel";
+import MediaCarousel from "@/components/feed/MediaCarousel"; // <-- your patched carousel (images/videos only)
 import { ImageNavTip } from "@/components/ux/CoachMarks";
 import { useRouter } from "next/navigation";
 
@@ -20,41 +22,17 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [slideOut, setSlideOut] = useState(false);
   const [showImageTip, setShowImageTip] = useState(false);
   const [showScrollHint, setShowScrollHint] = useState(true);
+
+  // NEW: local state for map sheet
+  const [mapOpen, setMapOpen] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false); // trigger slide-up anim
+
   const router = useRouter();
-
-  // // --- Swipe LEFT to open listing ---
-  // const startX = useRef(0);
-  // const startY = useRef(0);
-  // const swiping = useRef(false);
-
-  // const onTouchStart = (e: React.TouchEvent) => {
-  //   const t = e.touches[0];
-  //   startX.current = t.clientX;
-  //   startY.current = t.clientY;
-  //   swiping.current = true;
-  // };
-  // const onTouchMove = (e: React.TouchEvent) => {
-  //   if (!swiping.current) return;
-  //   const t = e.touches[0];
-  //   const dx = t.clientX - startX.current;
-  //   const dy = t.clientY - startY.current;
-  //   if (dx < -70 && Math.abs(dy) < 40) {
-  //     swiping.current = false;
-  //     openListing();
-  //   }
-  // };
-  // const onTouchEnd = () => {
-  //   swiping.current = false;
-  // };
 
   const openListing = () => {
     setSlideOut(true);
-    window.setTimeout(
-      () => router.push(`/listing/${listing.id}`),
-      prefersReducedMotion() ? 0 : 180
-    );
+    window.setTimeout(() => router.push(`/listing/${listing.id}`), prefersReducedMotion() ? 0 : 180);
   };
-
   const overswipe = () => openListing();
 
   // First-use hints
@@ -66,7 +44,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   useEffect(() => {
     if (!showImageTip) return;
     const t = window.setTimeout(() => {
-      try { sessionStorage.setItem("tipImageNav", "1"); } catch { }
+      try { sessionStorage.setItem("tipImageNav", "1"); } catch {}
       setShowImageTip(false);
     }, 10000);
     return () => window.clearTimeout(t);
@@ -83,12 +61,47 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const primaryBadge =
     badges.find((b) => ["premium", "sponsored", "featured", "forYou"].includes(b)) || undefined;
 
+  /* ────────────────────────────────────────────────────────────────────────────
+     DELETE-ME (single block of comments)
+
+     Why this fixes your conflict:
+     - The map is no longer a carousel slide, so end-overswipe works exactly as before.
+     - We add a small floating "Map" icon button layered over the media.
+     - When tapped, we open a 60% tall drop-up sheet with an embedded map (iframe).
+     - Backdrop click, X button, or ESC closes it. Nice padding, title, animation.
+
+     Customize:
+     - Move the button: change its fixed position classes below.
+     - Change height: adjust SHEET_HEIGHT_PCT.
+     - Replace iframe with your map component if you have lat/lng.
+  ──────────────────────────────────────────────────────────────────────────── */
+
+  const SHEET_HEIGHT_PCT = 60; // 60% sheet height
+
+  // Animate sheet in/out
+  useEffect(() => {
+    if (mapOpen) {
+      const id = requestAnimationFrame(() => setMapVisible(true));
+      return () => cancelAnimationFrame(id);
+    } else {
+      setMapVisible(false);
+    }
+  }, [mapOpen]);
+
+  // Optional: ESC to close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMapOpen(false);
+    };
+    if (mapOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mapOpen]);
+
   return (
     <section
-      className={`snap-card relative w-full overflow-hidden rounded-2xl border
-    bg-black
-    ${isPremium ? "ring-1 ring-amber-300/70" : ""}
-    ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
+      className={`snap-card relative w-full overflow-hidden rounded-2xl border bg-black
+        ${isPremium ? "ring-1 ring-amber-300/70" : ""}
+        ${slideOut ? "translate-x-10 opacity-0 transition duration-200" : ""}`}
     >
       {/* Featured/Sponsored pill */}
       {primaryBadge && (
@@ -100,15 +113,40 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
       )}
 
-      {/* Media fills the entire slide */}
-      <div className="absolute inset-0 z-0">
-        <ImageCarousel
-          className="h-full w-full"  // <-- important
-          images={listing.images}
-          onOverswipeRightAtEnd={overswipe}
-          onFirstInteraction={() => setShowImageTip(false)}
-        />
-      </div>
+{/* Media fills the entire slide */}
+      <MediaCarousel
+        className="h-full w-full"
+        slides={[
+          // Video (if available)
+          ...(listing.videos && listing.videos.length > 0
+            ? listing.videos.map(v => ({
+              kind: "video" as const,
+              src: v.src,
+              poster: v.poster,
+              type: v.type
+            }))
+            : [{ kind: "placeholder" as const, text: "No video uploaded" }]),
+
+          // Images
+          ...listing.images.map(src => ({
+            kind: "image" as const,
+            src
+          })),
+        ]}
+        onOverswipeRightAtEnd={overswipe}
+        onFirstInteraction={() => setShowImageTip(false)}
+      />
+
+      {/* Floating Map button (top-right, subtle) */}
+      <button
+        type="button"
+        onClick={() => setMapOpen(true)}
+        className="absolute right-2 top-20 z-20 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-xs text-white shadow hover:bg-black/70 focus:outline-none focus-visible:ring"
+        aria-label="Open map"
+      >
+        <MapPin className="h-4 w-4" />
+        Map
+      </button>
 
       {showImageTip && <ImageNavTip onDismiss={() => setShowImageTip(false)} />}
 
@@ -170,6 +208,69 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </div>
         </div>
       )}
+
+      {/* ===================== Drop-up Map Sheet (60%) ===================== */}
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Close map"
+        onClick={() => setMapOpen(false)}
+        className={[
+          "absolute inset-0 z-40 transition-opacity duration-200",
+          mapOpen ? (mapVisible ? "opacity-100" : "opacity-0") : "pointer-events-none opacity-0",
+        ].join(" ")}
+        style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      />
+
+      {/* Sheet */}
+      <div
+        className={[
+          "absolute left-0 right-0 z-50 rounded-t-2xl bg-white shadow-xl",
+          "transition-transform duration-250 ease-out",
+        ].join(" ")}
+        style={{
+          bottom: 0,
+          height: `${SHEET_HEIGHT_PCT}%`,
+          transform: mapOpen
+            ? mapVisible
+              ? "translateY(0%)"
+              : "translateY(100%)"
+            : "translateY(100%)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-neutral-700" />
+            <h3 className="text-sm font-semibold text-neutral-800">Location</h3>
+          </div>
+          <button
+            onClick={() => setMapOpen(false)}
+            className="rounded-md p-2 text-neutral-600 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 pb-4">
+          <div className="overflow-hidden rounded-2xl border border-neutral-200">
+            {/* Replace the src with your own coords if you have them on listing */}
+            <iframe
+              loading="lazy"
+              allowFullScreen
+              className="h-[min(50vh,100%)] w-full"
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(listing.city)}&z=14&output=embed`}
+            />
+          </div>
+        </div>
+      </div>
+      {/* =================================================================== */}
     </section>
   );
 }
