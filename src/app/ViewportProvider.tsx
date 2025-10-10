@@ -86,7 +86,7 @@ export default function ViewportProvider() {
       });
 
       if (closest && minDist > 4) {
-        const rect = closest.getBoundingClientRect();
+        const rect = (closest as HTMLElement).getBoundingClientRect();
         const targetY = window.scrollY + rect.top - padTop;
         window.scrollTo({ top: targetY }); // instant correction
       }
