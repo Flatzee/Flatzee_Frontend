@@ -249,9 +249,7 @@ function smoothScrollToTopSnapSafe() {
 
   return (
     <div className="relative">
-      <div className="sticky top-0 z-50">
-        <TopBar onApplySearch={onApplySearch} />
-      </div>
+      <TopBar onApplySearch={onApplySearch} />
 
       <main className="bg-neutral-50 pt-[var(--searchbar-h)] pb-[calc(var(--bottombar-h)+var(--bottom-safe))]">
         <div className="mx-auto grid max-w-7xl gap-2 md:gap-6 px-0 md:px-6">

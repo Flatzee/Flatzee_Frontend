@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, Heart, MapPin, Menu, Search, UserCircle } from "lucide-react";
@@ -47,7 +47,7 @@ export default function TopBar({ onApplySearch }: Props) {
     try {
       const saved = sessionStorage.getItem("fz.dest");
       if (saved) setDestination(saved);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function TopBar({ onApplySearch }: Props) {
   const dismissHint = () => {
     try {
       sessionStorage.setItem("fz.searchHint", "1");
-    } catch {}
+    } catch { }
     setShowHint(false);
   };
 
@@ -141,7 +141,7 @@ export default function TopBar({ onApplySearch }: Props) {
     try {
       sessionStorage.setItem("fz.dest", destination || "");
       sessionStorage.setItem("fz.searchHint", "1"); // once used, never show hint again
-    } catch {}
+    } catch { }
 
     onApplySearch?.({
       destination: destination || undefined,
@@ -162,248 +162,249 @@ export default function TopBar({ onApplySearch }: Props) {
   };
 
   return (
-    <div className="relative">
-      {/* DESKTOP BAR (unchanged) */}
-      <div className="hidden md:flex mx-auto h-[var(--desktop-topbar-h)] max-w-7xl items-center justify-between gap-3 border-b bg-white/70 px-4 backdrop-blur-md">
-        {/* Left */}
-        <button
-          aria-label="Open menu"
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen(true)}
-          className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+    <header className="fixed inset-x-0 top-0 z-[1000] border-b bg-white shadow-sm isolation-auto">
 
-        {/* Center */}
-        <button
-          ref={pillRef}
-          aria-label="Open search: destination, dates, guests"
-          onClick={() => {
-            setOpen(true);
-            setStep("dest");
-          }}
-          className="group mx-auto flex min-w-[260px] max-w-xl flex-1 items-center justify-between gap-3 rounded-full border bg-white px-4 py-2 text-left text-sm text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
-        >
-          <div className="flex flex-1 items-center justify-between gap-3">
-            <span className="truncate">{destination || "Destination"}</span>
-            <span className="text-neutral-300">|</span>
-            <span className="truncate">{range.start ? range.start.toLocaleDateString() : "Check-in"}</span>
-            <span className="text-neutral-300">→</span>
-            <span className="truncate">{range.end ? range.end.toLocaleDateString() : "Check-out"}</span>
-            <span className="text-neutral-300">|</span>
-            <span className="truncate">{guests ? `${guests} guest${guests === 1 ? "" : "s"}` : "Guests"}</span>
-          </div>
-          <Search className="h-4 w-4 text-neutral-500" />
-        </button>
-
-        {/* Right */}
-        <div className="flex items-center gap-2">
-          <button aria-label="Wishlists" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
-            <Heart className="h-5 w-5" />
-          </button>
-          <button aria-label="Profile" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
-            <UserCircle className="h-6 w-6" />
-          </button>
-        </div>
-      </div>
-
-      {/* MOBILE: single compact sticky bar (no grow/shrink flicker) */}
-      <div className="md:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-        <div
-          ref={barRef}
-          className="mx-auto flex h-12 max-w-7xl items-center gap-2 px-3"
-        >
-          {/* Left: burger */}
+      {/* single measurer for both desktop & mobile bars */}
+      <div ref={barRef} className="mx-auto max-w-7xl">
+        {/* DESKTOP BAR (unchanged) */}
+        <div className="hidden md:flex h-14 items-center justify-between gap-3 px-4">
+          {/* Left */}
           <button
             aria-label="Open menu"
             aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen(true)}
-            className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
+            className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
           >
-            <Menu className="h-4 w-4" />
+            <Menu className="h-5 w-5" />
           </button>
 
-          {/* Center: compact pill */}
+          {/* Center */}
           <button
             ref={pillRef}
-            aria-label="Open search"
+            aria-label="Open search: destination, dates, guests"
             onClick={() => {
               setOpen(true);
               setStep("dest");
             }}
-            className="flex flex-1 items-center justify-between overflow-hidden rounded-full border bg-white px-3 py-2 text-left text-xs text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
+            className="group mx-auto flex min-w-[260px] max-w-xl flex-1 items-center justify-between gap-3 rounded-full border bg-white px-4 py-2 text-left text-sm text-neutral-700 shadow-sm focus:outline-none focus-visible:ring"
           >
-            <div className="truncate">{summary}</div>
-            <Search className="h-3.5 w-3.5 text-neutral-500" />
+            <div className="flex flex-1 items-center justify-between gap-3">
+              <span className="truncate">{destination || "Destination"}</span>
+              <span className="text-neutral-300">|</span>
+              <span className="truncate">{range.start ? range.start.toLocaleDateString() : "Check-in"}</span>
+              <span className="text-neutral-300">→</span>
+              <span className="truncate">{range.end ? range.end.toLocaleDateString() : "Check-out"}</span>
+              <span className="text-neutral-300">|</span>
+              <span className="truncate">{guests ? `${guests} guest${guests === 1 ? "" : "s"}` : "Guests"}</span>
+            </div>
+            <Search className="h-4 w-4 text-neutral-500" />
           </button>
 
-          {/* Right: actions */}
-          <button aria-label="Wishlists" className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
-            <Heart className="h-4 w-4" />
-          </button>
-          <button aria-label="Profile" className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
-            <UserCircle className="h-5 w-5" />
-          </button>
+          {/* Right */}
+          <div className="flex items-center gap-2">
+            <button aria-label="Wishlists" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
+              <Heart className="h-5 w-5" />
+            </button>
+            <button aria-label="Profile" className="rounded-full p-2 hover:bg-neutral-100 focus:outline-none focus-visible:ring">
+              <UserCircle className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
-        {/* Snackbar hint (sits below the bar; auto-hides) */}
-        {showHint && (
+        {/* MOBILE BAR */}
+        <div className="md:hidden">
           <div
-            role="status"
-            className="fixed left-0 right-0 z-40"
-            style={{ top: "calc(var(--searchbar-h) + 8px)" }}
+            className={`flex items-center justify-between px-4 bg-transparent transition-all duration-300 ${mobileCollapsed ? "h-12" : "h-16"
+              }`}
           >
-            <div className="mx-auto max-w-7xl px-3">
-              <div className="mx-auto w-full rounded-lg bg-neutral-900/95 px-3 py-2 text-xs text-white shadow-lg backdrop-blur supports-[backdrop-filter]:bg-neutral-900/85 flex items-center justify-between">
-                <span>Tip: search a destination, dates, and guests for better matches.</span>
+            <div
+              className={`font-semibold tracking-tight text-[#5563EB] select-none transition-all duration-300 ${mobileCollapsed ? "text-base" : "text-lg"
+                }`}
+            >
+              Flatzee
+            </div>
+
+            {/* Center: search pill */}
+            <button
+              ref={pillRef}
+              aria-label="Open search"
+              onClick={() => { setOpen(true); setStep("dest"); }}
+              className={`flex flex-1 mx-3 items-center justify-between overflow-hidden rounded-full border border-neutral-200 bg-white px-3 text-left text-xs text-neutral-700 shadow-sm focus:outline-none focus-visible:ring transition-all duration-300 ${mobileCollapsed ? "py-2" : "py-3"}`}
+            >
+
+              <div className="truncate">{summary}</div>
+              <Search className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
+            </button>
+
+            {/* Right: profile icon */}
+            <button
+              aria-label="Profile"
+              className="rounded-full p-1.5 hover:bg-neutral-100 focus:outline-none focus-visible:ring"
+            >
+              <UserCircle className="h-5 w-5 text-neutral-700" />
+            </button>
+          </div>
+
+
+
+          {/* Snackbar hint (sits below the bar; auto-hides) */}
+          {showHint && (
+            <div
+              role="status"
+              className="fixed left-0 right-0 z-40"
+              style={{ top: "calc(var(--searchbar-h) + 8px)" }}
+            >
+              <div className="mx-auto max-w-7xl px-3">
+                <div className="mx-auto w-full rounded-lg bg-neutral-900/95 px-3 py-2 text-xs text-white shadow-lg backdrop-blur supports-[backdrop-filter]:bg-neutral-900/85 flex items-center justify-between">
+                  <span>Tip: search a destination, dates, and guests for better matches.</span>
+                  <button
+                    onClick={dismissHint}
+                    className="ml-3 rounded px-2 py-1 text-[11px] font-medium bg-white/10 hover:bg-white/20 focus:outline-none focus-visible:ring"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SEARCH MODAL */}
+        {open && (
+          <div
+            className="fixed inset-0 z-[60] grid place-items-start bg-black/20 p-3 pt-[calc(var(--desktop-topbar-h))]"
+            role="dialog"
+            aria-label="Search panel"
+            onClick={() => setOpen(false)}
+          >
+            <div className="mx-auto w-full max-w-2xl rounded-2xl border bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-3 text-xs text-neutral-500">{summary}</div>
+
+              {/* Step: Destination */}
+              {step === "dest" && (
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="dest">
+                    Destination
+                  </label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <input
+                      id="dest"
+                      className="w-full rounded-lg border px-9 py-2 text-sm focus:outline-none focus-visible:ring"
+                      placeholder="Where to?"
+                      value={destination}
+                      onFocus={() => setShowSuggest(true)}
+                      onChange={(e) => {
+                        setDestination(e.target.value);
+                        setShowSuggest(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitDestination(destination);
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowSuggest(false), 100)}
+                    />
+                    {showSuggest && (
+                      <div className="absolute z-10 mt-1 w-full rounded-lg border bg-white p-1 shadow-lg">
+                        <button
+                          type="button"
+                          aria-label="Use current location"
+                          className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring"
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              alert("Geolocation not supported");
+                              return;
+                            }
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                const city = nearestCity(pos.coords.latitude, pos.coords.longitude);
+                                commitDestination(city);
+                              },
+                              () => {
+                                alert("Location access denied");
+                              },
+                              { enableHighAccuracy: false, maximumAge: 300000 }
+                            );
+                          }}
+                        >
+                          <Crosshair className="h-4 w-4" /> Use current location
+                        </button>
+                        <div className="my-1 h-px bg-neutral-100" />
+                        {SUGGESTIONS.filter((c) => c.toLowerCase().includes(destination.toLowerCase())).map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring"
+                            onClick={() => {
+                              commitDestination(c);
+                            }}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step: Dates */}
+              {step === "dates" && (
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-neutral-600">Select dates</label>
+                  <DateRangePicker
+                    value={range}
+                    onChange={setRange}
+                    onComplete={(r) => {
+                      setRange(r);
+                      setStep("guests");
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Step: Guests */}
+              {step === "guests" && (
+                <div className="mb-1">
+                  <label className="mb-2 block text-xs font-medium text-neutral-600">Guests</label>
+                  <GuestPicker
+                    onComplete={(total) => {
+                      setGuests(total);
+                      applySearch();
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-end gap-2">
                 <button
-                  onClick={dismissHint}
-                  className="ml-3 rounded px-2 py-1 text-[11px] font-medium bg-white/10 hover:bg-white/20 focus:outline-none focus-visible:ring"
+                  type="button"
+                  aria-label="Close search"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm hover:bg-neutral-100 focus:outline-none focus-visible:ring"
                 >
-                  Got it
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  aria-label="Search"
+                  onClick={applySearch}
+                  disabled={!destination || !(range.start && range.end)}
+                  className="rounded-lg bg-black px-3 py-2 text-sm text-white hover:opacity-90 focus:outline-none focus-visible:ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Search
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
-
-      {/* SEARCH MODAL */}
-      {open && (
-        <div
-          className="fixed inset-0 z-[60] grid place-items-start bg-black/20 p-3 pt-[calc(var(--desktop-topbar-h))]"
-          role="dialog"
-          aria-label="Search panel"
-          onClick={() => setOpen(false)}
-        >
-          <div className="mx-auto w-full max-w-2xl rounded-2xl border bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 text-xs text-neutral-500">{summary}</div>
-
-            {/* Step: Destination */}
-            {step === "dest" && (
-              <div className="mb-3">
-                <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="dest">
-                  Destination
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                    <MapPin className="h-4 w-4" />
-                  </div>
-                  <input
-                    id="dest"
-                    className="w-full rounded-lg border px-9 py-2 text-sm focus:outline-none focus-visible:ring"
-                    placeholder="Where to?"
-                    value={destination}
-                    onFocus={() => setShowSuggest(true)}
-                    onChange={(e) => {
-                      setDestination(e.target.value);
-                      setShowSuggest(true);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        commitDestination(destination);
-                      }
-                    }}
-                    onBlur={() => setTimeout(() => setShowSuggest(false), 100)}
-                  />
-                  {showSuggest && (
-                    <div className="absolute z-10 mt-1 w-full rounded-lg border bg-white p-1 shadow-lg">
-                      <button
-                        type="button"
-                        aria-label="Use current location"
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring"
-                        onClick={() => {
-                          if (!navigator.geolocation) {
-                            alert("Geolocation not supported");
-                            return;
-                          }
-                          navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                              const city = nearestCity(pos.coords.latitude, pos.coords.longitude);
-                              commitDestination(city);
-                            },
-                            () => {
-                              alert("Location access denied");
-                            },
-                            { enableHighAccuracy: false, maximumAge: 300000 }
-                          );
-                        }}
-                      >
-                        <Crosshair className="h-4 w-4" /> Use current location
-                      </button>
-                      <div className="my-1 h-px bg-neutral-100" />
-                      {SUGGESTIONS.filter((c) => c.toLowerCase().includes(destination.toLowerCase())).map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring"
-                          onClick={() => {
-                            commitDestination(c);
-                          }}
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step: Dates */}
-            {step === "dates" && (
-              <div className="mb-3">
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Select dates</label>
-                <DateRangePicker
-                  value={range}
-                  onChange={setRange}
-                  onComplete={(r) => {
-                    setRange(r);
-                    setStep("guests");
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Step: Guests */}
-            {step === "guests" && (
-              <div className="mb-1">
-                <label className="mb-2 block text-xs font-medium text-neutral-600">Guests</label>
-                <GuestPicker
-                  onComplete={(total) => {
-                    setGuests(total);
-                    applySearch();
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="mt-3 flex justify-end gap-2">
-              <button
-                type="button"
-                aria-label="Close search"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm hover:bg-neutral-100 focus:outline-none focus-visible:ring"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={applySearch}
-                disabled={!destination || !(range.start && range.end)}
-                className="rounded-lg bg-black px-3 py-2 text-sm text-white hover:opacity-90 focus:outline-none focus-visible:ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Search
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </div>
+    </header >
   );
 }
